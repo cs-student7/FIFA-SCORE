@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ⚽ GoalPulse — Live Football Score Platform
 
 A full-featured Django football scores platform using **SQLite** (zero-config, no PostgreSQL/Redis needed).
@@ -86,3 +87,7 @@ Admin panel: http://127.0.0.1:8000/admin/
     'anon': '1000/hour',
     'user': '10000/hour',
 },
+=======
+# FIFA-SCORE
+FIFA Score is a Django-based football web application that delivers live match scores, fixtures, league standings, and team statistics for major international tournaments and European leagues. Built with real-time API integration and a responsive, user-friendly interface.
+>>>>>>> d36033acfa8243cad123133b65e932d2fc491b3e
