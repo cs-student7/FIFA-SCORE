@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Notifications - GoalPulse{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="section-title mb-4">Notifications</h1>
+  {% for notif in user.notifications.all %}
+  <div class="section-block p-3 mb-2 {% if not notif.is_read %}border-start border-3 border-danger{% endif %}">
+    <strong>{{ notif.title }}</strong><br>
+    <span class="text-muted small">{{ notif.message }}</span>
+    <span class="float-end text-muted small font-mono">{{ notif.created_at|timesince }} ago</span>
+  </div>
+  {% empty %}
+  <p class="text-center text-muted">No notifications yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

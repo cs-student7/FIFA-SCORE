@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Teams – GoalPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <h1 class="section-title mb-0"><i class="bi bi-shield-fill me-1"></i>Teams</h1>
+    <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+      <input type="search" name="q" value="{{ search_query }}" placeholder="Search teams…"
+             class="form-control form-control-sm"
+             style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:200px">
+      <button class="btn gp-btn-primary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+  </div>
+
+  {% if teams %}
+  <div class="section-block">
+    <div class="standings-table-wrap">
+      <table class="standings-table w-100">
+        <thead>
+          <tr>
+            <th class="col-team" style="text-align:left;padding-left:16px">Team</th>
+            <th>Country</th>
+            <th>Stadium</th>
+            <th>Founded</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for team in teams %}
+          <tr class="standing-row">
+            <td class="col-team">
+              <a href="{% url 'team-detail' team.slug %}" class="d-flex align-items-center gap-2 text-decoration-none" style="color:inherit">
+                <img src="{{ team.logo_url }}" alt="" class="team-logo-sm" loading="lazy"
+                     onerror="this.src='{% static "images/default-team.svg" %}'">
+                <span class="fw-600">{{ team.name }}</span>
+              </a>
+            </td>
+            <td class="text-muted">{{ team.country.name|default:"–" }}</td>
+            <td class="text-muted small">{{ team.stadium|default:"–" }}</td>
+            <td class="font-mono text-muted">{{ team.founded|default:"–" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if is_paginated %}
+  <nav class="d-flex justify-content-center mt-4">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}">«</a></li>{% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}">»</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="section-block p-5 text-center text-muted">
+    <i class="bi bi-shield-x fs-1 d-block mb-3"></i>
+    <p>No teams found{% if search_query %} for "{{ search_query }}"{% endif %}.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

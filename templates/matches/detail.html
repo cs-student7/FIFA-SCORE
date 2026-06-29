@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ match.home_team.name }} vs {{ match.away_team.name }} - GoalPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+
+  <!-- Match Header -->
+  <div class="match-detail-header" id="match-header" data-match-id="{{ match.id }}">
+    <div class="match-detail-competition">
+      <img src="{{ match.competition.logo_url }}" alt="{{ match.competition.name }}" class="comp-logo-sm" onerror="this.src='/static/images/default-league.svg'">
+      <span>{{ match.competition.name }}</span>
+      {% if match.matchday %}<span class="text-muted small">Matchday {{ match.matchday }}</span>{% endif %}
+    </div>
+
+    <div class="match-detail-scoreboard">
+      <div class="scoreboard-team home-team">
+        <img src="{{ match.home_team.logo_url }}" alt="{{ match.home_team.name }}" class="team-logo-xl" onerror="this.src='/static/images/default-team.svg'">
+        <h2 class="team-name-large">{{ match.home_team.name }}</h2>
+      </div>
+
+      <div class="scoreboard-center">
+        {% if match.status == "scheduled" %}
+          <div class="kickoff-display font-mono">{{ match.kickoff|time:"H:i" }}</div>
+          <div class="kickoff-date text-muted">{{ match.kickoff|date:"l, d M Y" }}</div>
+        {% else %}
+          <div class="scoreboard-score" id="scoreboard-score">
+            <span class="sb-home" id="sb-home-score">{{ match.home_score }}</span>
+            <span class="sb-sep">-</span>
+            <span class="sb-away" id="sb-away-score">{{ match.away_score }}</span>
+          </div>
+          {% if match.is_live %}
+          <div class="scoreboard-status live-status">
+            <span class="pulse-ring"><span class="live-dot"></span></span>
+            <span class="font-mono" id="match-clock">{{ match.display_minute }}</span>
+          </div>
+          {% elif match.status == "ft" %}
+          <div class="scoreboard-status ft-status">Full Time</div>
+          {% elif match.status == "ht" %}
+          <div class="scoreboard-status ht-status">Half Time</div>
+          {% endif %}
+          {% if match.home_ht_score is not None %}
+          <div class="ht-score-display font-mono text-muted small">({{ match.home_ht_score }}-{{ match.away_ht_score }} HT)</div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="scoreboard-team away-team">
+        <img src="{{ match.away_team.logo_url }}" alt="{{ match.away_team.name }}" class="team-logo-xl" onerror="this.src='/static/images/default-team.svg'">
+        <h2 class="team-name-large">{{ match.away_team.name }}</h2>
+      </div>
+    </div>
+
+    <div class="match-detail-meta text-muted small font-mono">
+      {% if match.venue %}<span><i class="bi bi-geo-alt"></i> {{ match.venue }}</span>{% endif %}
+      {% if match.referee %}<span><i class="bi bi-whistle"></i> {{ match.referee }}</span>{% endif %}
+      {% if match.attendance %}<span><i class="bi bi-people"></i> {{ match.attendance|intcomma }}</span>{% endif %}
+    </div>
+  </div>
+
+  <!-- Tabs: Events | Stats | Momentum -->
+  <ul class="nav gp-tabs mb-4 mt-3" id="matchTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link gp-tab active" data-bs-toggle="tab" data-bs-target="#tab-events" type="button">Timeline</button></li>
+    <li class="nav-item"><button class="nav-link gp-tab" data-bs-toggle="tab" data-bs-target="#tab-stats" type="button">Statistics</button></li>
+    <li class="nav-item"><button class="nav-link gp-tab" data-bs-toggle="tab" data-bs-target="#tab-momentum" type="button">Momentum</button></li>
+  </ul>
+
+  <div class="tab-content" id="matchTabContent">
+
+    <!-- TIMELINE TAB -->
+    <div class="tab-pane fade show active" id="tab-events">
+      <div class="events-timeline" id="events-timeline">
+        {% for event in match.events.all %}
+        <div class="timeline-event event-type-{{ event.event_type }} {% if event.team == match.home_team %}event-home{% else %}event-away{% endif %}">
+          <div class="event-minute font-mono">{{ event.minute_display }}</div>
+          <div class="event-icon">
+            {% if event.event_type == "goal" or event.event_type == "penalty" %}&#x26BD;
+            {% elif event.event_type == "own_goal" %}&#x1F534;
+            {% elif event.event_type == "yellow_card" %}<span class="card-yellow">&#9646;</span>
+            {% elif event.event_type == "red_card" or event.event_type == "yellow_red" %}<span class="card-red">&#9646;</span>
+            {% elif event.event_type == "substitution" %}&#x21C4;
+            {% else %}&#x2139;{% endif %}
+          </div>
+          <div class="event-detail">
+            <span class="event-player">{{ event.player.full_name|default:"" }}</span>
+            {% if event.assist_player %}<span class="event-assist text-muted small">Assist: {{ event.assist_player.full_name }}</span>{% endif %}
+            {% if event.description %}<span class="event-description text-muted small">{{ event.description }}</span>{% endif %}
+          </div>
+          <div class="event-team-logo">
+            <img src="{{ event.team.logo_url }}" alt="{{ event.team.name }}" class="team-logo-xs" onerror="this.src='/static/images/default-team.svg'">
+          </div>
+        </div>
+        {% empty %}
+        <div class="no-events text-center text-muted py-4">
+          <i class="bi bi-clock-history fs-2 d-block mb-2"></i>
+          <p>No events recorded yet</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div class="tab-pane fade" id="tab-stats">
+      {% if match.statistics %}
+      {% with s=match.statistics %}
+      <div class="stats-panel" id="stats-panel">
+        {% include "components/stat_bar.html" with label="Possession" home_val=s.home_possession away_val=s.away_possession unit="%" %}
+        {% include "components/stat_bar.html" with label="Shots" home_val=s.home_shots away_val=s.away_shots %}
+        {% include "components/stat_bar.html" with label="Shots on Target" home_val=s.home_shots_on_target away_val=s.away_shots_on_target %}
+        {% include "components/stat_bar.html" with label="xG" home_val=s.home_xg away_val=s.away_xg unit="" is_decimal=True %}
+        {% include "components/stat_bar.html" with label="Corners" home_val=s.home_corners away_val=s.away_corners %}
+        {% include "components/stat_bar.html" with label="Fouls" home_val=s.home_fouls away_val=s.away_fouls %}
+        {% include "components/stat_bar.html" with label="Dangerous Attacks" home_val=s.home_dangerous_attacks away_val=s.away_dangerous_attacks %}
+        {% include "components/stat_bar.html" with label="Yellow Cards" home_val=s.home_yellow_cards away_val=s.away_yellow_cards %}
+      </div>
+      {% endwith %}
+      {% else %}
+      <p class="text-center text-muted py-4">Statistics not available</p>
+      {% endif %}
+    </div>
+
+    <!-- MOMENTUM TAB -->
+    <div class="tab-pane fade" id="tab-momentum">
+      <div class="momentum-container">
+        <div class="momentum-teams">
+          <span class="momentum-team-label home-label">
+            <img src="{{ match.home_team.logo_url }}" alt="" class="team-logo-xs" onerror="this.src='/static/images/default-team.svg'">
+            {{ match.home_team.short_name }}
+          </span>
+          <span class="momentum-title">Match Momentum</span>
+          <span class="momentum-team-label away-label">
+            {{ match.away_team.short_name }}
+            <img src="{{ match.away_team.logo_url }}" alt="" class="team-logo-xs" onerror="this.src='/static/images/default-team.svg'">
+          </span>
+        </div>
+        <div class="momentum-chart-wrap">
+          <canvas id="momentum-chart" height="120" aria-label="Match Momentum Chart"></canvas>
+        </div>
+        {% if match.statistics %}
+        <div class="momentum-current">
+          <div class="momentum-bar-wrap">
+            <div class="momentum-bar" id="home-momentum-bar" style="width: {{ match.statistics.home_momentum }}%"></div>
+            <div class="momentum-bar away-momentum-bar" id="away-momentum-bar" style="width: {{ match.statistics.away_momentum }}%"></div>
+          </div>
+          <div class="momentum-values font-mono">
+            <span id="home-momentum-val">{{ match.statistics.home_momentum }}%</span>
+            <span class="text-muted small">dominance</span>
+            <span id="away-momentum-val">{{ match.statistics.away_momentum }}%</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const MATCH_ID = {{ match.id }};
+const MATCH_IS_LIVE = {% if match.is_live %}true{% else %}false{% endif %};
+const MOMENTUM_DATA = [{% for m in match.momentum_data.all %}{"minute":{{ m.minute }},"value":{{ m.home_value }}},{% endfor %}];
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static "js/match_detail.js" %}"></script>
+{% endblock %}

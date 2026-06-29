@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Fixtures – FIFA SCOrE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+
+  <!-- Date picker bar -->
+  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <h1 class="section-title mb-0"><i class="bi bi-calendar3 section-icon-clock me-1"></i>Fixtures</h1>
+    <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+      <input type="date" name="date" value="{{ selected_date }}"
+             class="form-control form-control-sm"
+             style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:160px">
+      <button class="btn gp-btn-primary btn-sm" type="submit">Go</button>
+    </form>
+  </div>
+
+  {% if live_count %}
+  <div class="mb-3">
+    <span class="live-badge-large pulse-ring">
+      <span class="live-dot"></span>{{ live_count }} LIVE
+    </span>
+  </div>
+  {% endif %}
+
+  {% if matches %}
+    {% regroup matches by season.competition as comp_groups %}
+    {% for comp_group in comp_groups %}
+    <section class="section-block mb-4">
+      <div class="section-header">
+        <h2 class="section-title">
+          <img src="{{ comp_group.grouper.logo_url }}" alt="" class="comp-logo-xs me-1"
+               onerror="this.src='{% static "images/default-league.svg" %}'">
+          {{ comp_group.grouper.name }}
+        </h2>
+        <span class="section-count">{{ comp_group.list|length }} match{{ comp_group.list|length|pluralize:"es" }}</span>
+      </div>
+      <div class="fixture-list">
+        {% for match in comp_group.list %}
+          {% if match.status == 'scheduled' %}
+            {% include "components/fixture_row.html" with match=match %}
+          {% else %}
+            {% include "components/match_card.html" with match=match card_type=match.status %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  {% else %}
+  <div class="section-block p-5 text-center text-muted">
+    <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+    <p class="mb-0">No matches found for this date.</p>
+  </div>
+  {% endif %}
+
+  {% if is_paginated %}
+  <nav class="d-flex justify-content-center mt-4">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&date={{ selected_date }}">«</a></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&date={{ selected_date }}">»</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+</div>
+{% endblock %}

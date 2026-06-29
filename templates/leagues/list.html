@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Leagues & Competitions – GoalPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+
+  <div class="section-header mb-4 px-0">
+    <h1 class="section-title"><i class="bi bi-trophy section-icon-gold me-1"></i>Leagues & Competitions</h1>
+  </div>
+
+  {% if featured %}
+<section class="section-block mb-4">
+  <div class="section-header"><h2 class="section-title"><i class="bi bi-star-fill section-icon-gold"></i> Featured</h2></div>
+  <div class="competitions-grid">
+    {% for comp in featured %}
+    <a href="{% url 'league-detail' comp.slug %}" class="competition-card">
+      <div class="comp-logo-wrap">
+        <img src="{{ comp.logo_url }}" alt="{{ comp.name }}" class="comp-logo" loading="lazy"
+             onerror="this.src='{% static "images/default-league.svg" %}'">
+      </div>
+      <span class="comp-name">{{ comp.name }}</span>
+     <span class="comp-country text-muted small d-flex align-items-center gap-1">
+  {% if comp.country %}
+  <img src="{{ comp.country.flag_url }}" alt="{{ comp.country.name }}" class="country-flag-xs" width="16" height="11" onerror="this.src='{% static "images/default-flag.svg" %}'">
+  {{ comp.country.name }}
+  {% else %}
+  International
+  {% endif %}
+</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+  {% regroup competitions by comp_type as type_groups %}
+  {% for type_group in type_groups %}
+  <section class="section-block mb-4">
+    <div class="section-header">
+      <h2 class="section-title">
+        {% if type_group.grouper == 'league' %}<i class="bi bi-list-ol section-icon-table me-1"></i>Leagues
+        {% elif type_group.grouper == 'cup' %}<i class="bi bi-award section-icon-gold me-1"></i>Cup Competitions
+        {% elif type_group.grouper == 'international' %}<i class="bi bi-globe section-icon-cyan me-1"></i>International
+        {% else %}<i class="bi bi-flag me-1"></i>{{ type_group.grouper|title }}{% endif %}
+      </h2>
+      <span class="section-count">{{ type_group.list|length }}</span>
+    </div>
+    <div class="competitions-grid">
+      {% for comp in type_group.list %}
+      <a href="{% url 'league-detail' comp.slug %}" class="competition-card">
+        <div class="comp-logo-wrap">
+          <img src="{{ comp.logo_url }}" alt="{{ comp.name }}" class="comp-logo" loading="lazy"
+               onerror="this.src='{% static "images/default-league.svg" %}'">
+        </div>
+        <span class="comp-name">{{ comp.name }}</span>
+<span class="comp-country text-muted small d-flex align-items-center gap-1">
+  {% if comp.country %}
+  <img src="{{ comp.country.flag_url }}" alt="{{ comp.country.name }}" class="country-flag-xs" width="16" height="11" onerror="this.src='{% static "images/default-flag.svg" %}'">
+  {{ comp.country.name }}
+  {% else %}
+  International
+  {% endif %}
+</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="FIFA SCORE – Live Football Scores & Statistics">
+<title>{% block title %}FIFA SCORE – Live Football Scores{% endblock %}</title>
+{% load static %}
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<!-- Custom CSS -->
+<link href="{% static 'css/goalpulse.css' %}" rel="stylesheet">
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Live Score Ticker -->
+<div id="live-ticker" class="live-ticker" role="marquee" aria-live="polite">
+  <div class="ticker-label"><i class="bi bi-broadcast-pin me-1"></i>LIVE</div>
+  <div class="ticker-track" id="ticker-track">
+    <span class="ticker-loading">Connecting to live scores...</span>
+  </div>
+</div>
+
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark gp-navbar sticky-top" role="navigation" aria-label="Main navigation">
+  <div class="container-fluid px-3 px-lg-4">
+    <a class="navbar-brand gp-brand" href="{% url 'home' %}">
+      <img src="{% static 'images/football.jpg' %}" alt="GoalPulse" class="brand-icon" style="width:32px;height:32px;object-fit:contain;">
+      <span class="brand-text">FIFA <span class="brand-accent">SCORE</span></span>
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">
+            <i class="bi bi-house-fill me-1"></i>Home
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'match-list' %}">
+            <i class="bi bi-calendar3 me-1"></i>Fixtures
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'league-list' %}">
+            <i class="bi bi-trophy me-1"></i>Leagues
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'team-list' %}">
+            <i class="bi bi-shield-fill me-1"></i>Teams
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'player-list' %}">
+            <i class="bi bi-person-fill me-1"></i>Players
+          </a>
+        </li>
+      </ul>
+    <a href="{% url 'notification-list' %}" class="nav-link position-relative" title="Notifications">
+  <i class="bi bi-bell-fill fs-5"></i>
+  <span class="notif-badge" id="notif-count" style="display:none"></span>
+</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content" id="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="gp-footer mt-5" role="contentinfo">
+  <div class="container py-4">
+    <div class="row align-items-center">
+      <div class="col-md-4 mb-3 mb-md-0">
+        <a href="{% url 'home' %}" class="gp-brand text-decoration-none">
+          <img src="{% static 'images/football.jpg' %}" alt="FIFA SCORE" class="brand-icon" style="width:32px;height:32px;object-fit:contain;">
+          <span class="brand-text">FIFA<span class="brand-accent">SCORE</span></span>
+        </a>
+        <p class="text-muted small mt-2 mb-0">Real-time football data platform.</p>
+      </div>
+      <div class="col-md-4 mb-3 mb-md-0">
+        <ul class="list-inline text-center mb-0">
+          <li class="list-inline-item"><a href="{% url 'home' %}" class="footer-link">Home</a></li>
+          <li class="list-inline-item"><a href="{% url 'match-list' %}" class="footer-link">Fixtures</a></li>
+          <li class="list-inline-item"><a href="{% url 'league-list' %}" class="footer-link">Leagues</a></li>
+        </ul>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <p class="text-muted small mb-0">© 2025 FIFA SCORE For demo use only.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<!-- GoalPulse JS -->
+<script>
+  const GP_CONFIG = {
+    wsScheme: window.location.protocol === 'https:' ? 'wss' : 'ws',
+    wsHost: window.location.host,
+    updateInterval: {{ LIVE_UPDATE_INTERVAL|default:15 }} * 1000,
+    isAuthenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
+  };
+</script>
+<script>
+  // Paste this inside your base.html or home.html <script> block
+
+async function refreshLiveScores() {
+    const res = await fetch('/api/v1/matches/live/');
+    const data = await res.json();
+
+    const container = document.getElementById('live-scores-container');
+    if (!data.results.length) {
+        container.innerHTML = '<p class="text-muted text-center py-4">No live matches right now</p>';
+        return;
+    }
+
+    container.innerHTML = data.results.map(m => {
+        const home = m.teams.home;
+        const away = m.teams.away;
+        const goals = m.goals;
+        const elapsed = m.fixture.status.elapsed;
+
+        return `
+        <div class="card bg-dark border-secondary mb-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="text-center flex-fill">
+                <img src="${home.logo}" width="32" class="mb-1"><br>
+                <strong>${home.name}</strong>
+              </div>
+              <div class="text-center px-3">
+                <span class="badge bg-danger mb-1">${elapsed}'</span><br>
+                <span class="fs-3 fw-bold">${goals.home ?? 0} - ${goals.away ?? 0}</span>
+              </div>
+              <div class="text-center flex-fill">
+                <img src="${away.logo}" width="32" class="mb-1"><br>
+                <strong>${away.name}</strong>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+}
+
+// Run immediately, then every 30 seconds
+refreshLiveScores();
+setInterval(refreshLiveScores, 30000);
+</script>
+<script>
+  const GP_CONFIG = {
+    updateInterval: 30000,
+    isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
+    csrfToken: '{{ csrf_token }}',
+  };
+</script>
+<script src="{% static 'js/goalpulse.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

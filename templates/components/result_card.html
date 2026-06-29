@@ -1,0 +1,20 @@
+{% load static %}
+<a href="{% url "match-detail" match.id %}" class="result-card text-decoration-none">
+  <div class="result-competition">{{ match.competition.short_name|default:match.competition.name }}</div>
+  <div class="result-teams-score">
+    <div class="result-team">
+      <img src="{{ match.home_team.logo_url }}" alt="" class="team-logo-sm" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+      <span {% if match.home_score > match.away_score %}class="result-winner"{% endif %}>{{ match.home_team.short_name|default:match.home_team.name }}</span>
+    </div>
+    <div class="result-score font-mono">
+      <span {% if match.home_score > match.away_score %}class="result-winner"{% endif %}>{{ match.home_score }}</span>
+      <span class="result-sep">-</span>
+      <span {% if match.away_score > match.home_score %}class="result-winner"{% endif %}>{{ match.away_score }}</span>
+    </div>
+    <div class="result-team result-team-away">
+      <span {% if match.away_score > match.home_score %}class="result-winner"{% endif %}>{{ match.away_team.short_name|default:match.away_team.name }}</span>
+      <img src="{{ match.away_team.logo_url }}" alt="" class="team-logo-sm" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+    </div>
+  </div>
+  <div class="result-meta font-mono">FT &middot; {{ match.kickoff|date:"d M" }}</div>
+</a>

@@ -1,0 +1,20 @@
+{% load static %}
+<div class="stat-row">
+  <div class="stat-home font-mono">
+    {% if is_decimal %}{{ home_val|floatformat:2 }}{% else %}{{ home_val }}{% endif %}{{ unit }}
+  </div>
+  <div class="stat-bar-wrap">
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-bars">
+      {% if home_val or away_val %}
+      {% with total=home_val|add:away_val %}
+      <div class="stat-bar-home" style="width: {% if total > 0 %}{% widthratio home_val total 100 %}{% else %}50{% endif %}%"></div>
+      <div class="stat-bar-away" style="width: {% if total > 0 %}{% widthratio away_val total 100 %}{% else %}50{% endif %}%"></div>
+      {% endwith %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="stat-away font-mono">
+    {% if is_decimal %}{{ away_val|floatformat:2 }}{% else %}{{ away_val }}{% endif %}{{ unit }}
+  </div>
+</div>

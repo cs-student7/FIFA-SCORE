@@ -1,0 +1,83 @@
+{% load static %}
+<div class="standings-table-wrap">
+  <table class="standings-table w-100" aria-label="{{ competition.name }} Standings">
+    <thead><tr>
+      <th class="col-pos">#</th><th class="col-team">Team</th>
+      <th title="Played">P</th><th title="Won">W</th><th title="Drawn">D</th>
+      <th title="Lost">L</th><th title="Goal Difference">GD</th>
+      <th title="Points" class="col-pts">Pts</th><th title="Form">Form</th>
+    </tr></thead>
+    <tbody>
+      {% for s in standings %}
+      <tr class="standing-row {% if s.position <= 4 %}champions-zone{% elif s.position == 5 %}europa-zone{% endif %}">
+        <td class="col-pos font-mono">{{ s.position }}</td>
+        <td class="col-team">
+          <img src="{{ s.team.logo_url }}" alt="" class="team-logo-xs" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+          <span class="team-name-standing">{{ s.team.short_name|default:s.team.name }}</span>
+        </td>
+        <td class="font-mono">{{ s.played }}</td>
+        <td class="font-mono">{{ s.won }}</td>
+        <td class="font-mono">{{ s.drawn }}</td>
+        <td class="font-mono">{{ s.lost }}</td>
+        <td class="font-mono {% if s.goal_difference > 0 %}text-success{% elif s.goal_difference < 0 %}text-danger{% endif %}">
+          {% if s.goal_difference > 0 %}+{% endif %}{{ s.goal_difference }}
+        </td>
+        <td class="col-pts font-mono fw-600">{{ s.points }}</td>
+        <td><div class="form-dots">{% for r in s.form_list %}<span class="form-dot form-{{ r|lower }}" title="{{ r }}"></span>{% endfor %}</div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="standings-legend">
+    <span class="legend-item champions-leg">Champions League</span>
+    <span class="legend-item europa-leg">Europa League</span>
+    <span class="legend-item relegation-leg">Relegation</span>
+  </div>
+</div>
+
+{% load static %}
+<div class="table-responsive">
+<table class="table standings-table mb-0">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Club</th>
+      <th>P</th><th>W</th><th>D</th><th>L</th>
+      <th>GF</th><th>GA</th><th>GD</th>
+      <th>Pts</th>
+      <th>Form</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in standings %}
+    <tr>
+      <td>{{ s.position }}</td>
+      <td class="standings-club">
+        <img src="{{ s.team.logo_url }}" alt="" class="club-logo-xs"
+             onerror="this.src='{% static "images/default-team.svg" %}'">
+        <span>{{ s.team.name }}</span>
+        {% if s.team.country %}
+          <img src="{{ s.team.country.flag_url }}" alt="" class="flag-icon-xs ms-1"
+               title="{{ s.team.country.name }}">
+        {% endif %}
+      </td>
+      <td>{{ s.played }}</td>
+      <td>{{ s.won }}</td>
+      <td>{{ s.drawn }}</td>
+      <td>{{ s.lost }}</td>
+      <td>{{ s.goals_for }}</td>
+      <td>{{ s.goals_against }}</td>
+      <td>{{ s.goal_difference }}</td>
+      <td><strong>{{ s.points }}</strong></td>
+      <td>
+        {% for r in s.form_list %}
+          <span class="form-pill form-{{ r|lower }}">{{ r }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="11" class="text-center text-muted py-4">No standings yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

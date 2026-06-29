@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ competition.name }} - FIFA SCOrE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+
+  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3">
+    <img src="{{ competition.logo_url }}" alt="" class="comp-logo-lg"
+         onerror="this.src='{% static "images/default-league.svg" %}'">
+    <div>
+      <h1 class="section-title mb-1">{{ competition.name }}</h1>
+      {% if competition.country %}
+      <div class="d-flex align-items-center gap-2 text-muted">
+        <img src="{{ competition.country.flag_url }}" alt="" class="flag-icon"
+             onerror="this.src='{% static "images/default-flag.svg" %}'">
+        <span>{{ competition.country.name }}</span>
+      </div>
+      {% else %}
+      <div class="text-muted">International</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if standings %}
+  <section class="section-block mb-4">
+    <div class="section-header">
+      <h2 class="section-title"><i class="bi bi-table section-icon-list me-1"></i>Table</h2>
+      {% if season %}<span class="section-count">{{ season.name }}</span>{% endif %}
+    </div>
+    {% include "components/standings_table.html" with standings=standings %}
+  </section>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <section class="section-block mb-4">
+        <div class="section-header"><h2 class="section-title">Recent Results</h2></div>
+        <div class="fixture-list">
+          {% for match in recent_matches %}
+            {% include "components/match_card.html" with match=match card_type=match.status %}
+          {% empty %}
+            <p class="text-muted p-3 mb-0">No recent matches yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+    <div class="col-lg-6">
+      <section class="section-block mb-4">
+        <div class="section-header"><h2 class="section-title">Upcoming Fixtures</h2></div>
+        <div class="fixture-list">
+          {% for match in upcoming_matches %}
+            {% include "components/fixture_row.html" with match=match %}
+          {% empty %}
+            <p class="text-muted p-3 mb-0">No upcoming matches yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+
+  {% if top_scorers %}
+  <section class="section-block mb-4">
+    <div class="section-header"><h2 class="section-title">Top Scorers</h2></div>
+    <div class="table-responsive">
+      <table class="table standings-table mb-0">
+        <thead>
+          <tr><th>#</th><th>Player</th><th>Team</th><th>Goals</th><th>Assists</th></tr>
+        </thead>
+        <tbody>
+        {% for ts in top_scorers %}
+          <tr>
+            <td>{{ ts.rank }}</td>
+            <td>{{ ts.player }}</td>
+            <td>{{ ts.team.name }}</td>
+            <td>{{ ts.goals }}</td>
+            <td>{{ ts.assists }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

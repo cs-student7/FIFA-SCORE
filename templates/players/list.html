@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Players – GoalPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <h1 class="section-title mb-0"><i class="bi bi-person-fill me-1"></i>Players</h1>
+    <form method="get" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+      <input type="search" name="q" value="{{ search_query }}" placeholder="Search players…"
+             class="form-control form-control-sm"
+             style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:180px">
+      <select name="position" class="form-select form-select-sm"
+              style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:130px">
+        <option value="">All positions</option>
+        {% for code, label in positions %}
+        <option value="{{ code }}" {% if code == selected_position %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn gp-btn-primary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+  </div>
+
+  {% if players %}
+  <div class="section-block">
+    <div class="standings-table-wrap">
+      <table class="standings-table w-100">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th class="col-team" style="text-align:left;padding-left:16px">Player</th>
+            <th>Position</th>
+            <th>Team</th>
+            <th>Nation</th>
+            <th>Age</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for player in players %}
+          <tr class="standing-row">
+            <td class="font-mono text-muted">{{ player.shirt_number|default:"–" }}</td>
+            <td class="col-team">
+              <a href="{% url 'player-detail' player.slug %}" class="d-flex align-items-center gap-2 text-decoration-none" style="color:inherit">
+                <img src="{{ player.photo_url }}" alt="" class="team-logo-sm" loading="lazy"
+                     onerror="this.src='{% static "images/default-player.svg" %}'">
+                <span class="fw-600">{{ player.full_name }}</span>
+              </a>
+            </td>
+            <td><span class="badge" style="background:var(--gp-border);color:var(--gp-text-muted);font-size:10px">{{ player.position }}</span></td>
+            <td class="text-muted small">{{ player.current_team.short_name|default:"–" }}</td>
+            <td class="text-muted small">{{ player.nationality.code|default:"–" }}</td>
+            <td class="font-mono text-muted">{{ player.age|default:"–" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if is_paginated %}
+  <nav class="d-flex justify-content-center mt-4">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&position={{ selected_position }}">«</a></li>{% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&position={{ selected_position }}">»</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="section-block p-5 text-center text-muted">
+    <i class="bi bi-person-x fs-1 d-block mb-3"></i>
+    <p>No players found{% if search_query %} for "{{ search_query }}"{% endif %}.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

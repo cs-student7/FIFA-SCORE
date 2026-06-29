@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ player.full_name }} – GoalPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-3">
+  <div class="league-header">
+    <img src="{{ player.photo_url }}" alt="{{ player.full_name }}" class="league-logo-xl"
+         onerror="this.src='{% static "images/default-player.svg" %}'">
+    <div>
+      <h1 class="league-title">{{ player.full_name }}</h1>
+      <p class="text-muted mb-1">
+        <span class="badge me-1" style="background:var(--gp-border);color:var(--gp-text-muted)">{{ player.position }}</span>
+        {% if player.shirt_number %}<span class="font-mono me-2">#{{ player.shirt_number }}</span>{% endif %}
+        {% if player.current_team %}
+          <a href="{% url 'team-detail' player.current_team.slug %}" class="text-decoration-none" style="color:var(--gp-cyan)">
+            {{ player.current_team.name }}
+          </a>
+        {% endif %}
+        {% if player.nationality %} &middot; {{ player.nationality.name }}{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-lg-4">
+      <div class="section-block p-4">
+        <h2 class="section-title mb-3"><i class="bi bi-person-lines-fill section-icon-cyan me-1"></i>Profile</h2>
+        <table class="w-100" style="font-size:13px;border-collapse:collapse">
+          {% if player.date_of_birth %}
+          <tr style="border-bottom:1px solid var(--gp-border)">
+            <td class="text-muted py-2">Date of Birth</td>
+            <td class="py-2 text-end font-mono">{{ player.date_of_birth|date:"d M Y" }}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--gp-border)">
+            <td class="text-muted py-2">Age</td>
+            <td class="py-2 text-end font-mono">{{ player.age }}</td>
+          </tr>
+          {% endif %}
+          {% if player.height %}
+          <tr style="border-bottom:1px solid var(--gp-border)">
+            <td class="text-muted py-2">Height</td>
+            <td class="py-2 text-end font-mono">{{ player.height }} cm</td>
+          </tr>
+          {% endif %}
+          {% if player.weight %}
+          <tr style="border-bottom:1px solid var(--gp-border)">
+            <td class="text-muted py-2">Weight</td>
+            <td class="py-2 text-end font-mono">{{ player.weight }} kg</td>
+          </tr>
+          {% endif %}
+          {% if player.preferred_foot %}
+          <tr style="border-bottom:1px solid var(--gp-border)">
+            <td class="text-muted py-2">Preferred Foot</td>
+            <td class="py-2 text-end">{{ player.get_preferred_foot_display }}</td>
+          </tr>
+          {% endif %}
+          {% if player.market_value %}
+          <tr>
+            <td class="text-muted py-2">Market Value</td>
+            <td class="py-2 text-end" style="color:var(--gp-gold)">€{{ player.market_value|floatformat:0 }}</td>
+          </tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    <div class="col-12 col-lg-8">
+      {% if goal_events %}
+      <section class="section-block mb-4">
+        <div class="section-header">
+          <h2 class="section-title"><i class="bi bi-circle-fill goal-dot me-1"></i>Recent Goals</h2>
+        </div>
+        <div class="fixture-list">
+          {% for event in goal_events %}
+          <div class="fixture-row">
+            <span class="fixture-time font-mono">{{ event.minute }}'</span>
+            <span></span>
+            <div class="fixture-teams">
+              <a href="{% url 'match-detail' event.match.id %}" class="text-decoration-none" style="color:inherit">
+                {{ event.match.home_team.short_name }} vs {{ event.match.away_team.short_name }}
+                <span class="text-muted small ms-2 font-mono">{{ event.match.kickoff|date:"d M" }}</span>
+              </a>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% else %}
+      <div class="section-block p-4 text-center text-muted">
+        <i class="bi bi-circle fs-2 d-block mb-2"></i>
+        <p>No goals recorded yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

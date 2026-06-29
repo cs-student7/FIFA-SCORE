@@ -1,0 +1,45 @@
+{% load static %}
+<article class="match-card {{ card_type|default:"result" }}-card"
+  data-match-id="{{ match.id }}"
+  data-status="{{ match.status }}"
+  aria-label="{{ match.home_team.name }} vs {{ match.away_team.name }}">
+  <a href="{% url "match-detail" match.id %}" class="match-card-link">
+    <div class="match-competition">
+      <img src="{{ match.competition.logo_url }}" alt="{{ match.competition.name }}" class="comp-logo-xs" loading="lazy" onerror="this.src='/static/images/default-league.svg'">
+      <span>{{ match.competition.name }}</span>
+      {% if match.is_live %}
+      <span class="live-badge ms-auto pulse-ring"><span class="live-dot"></span><span class="match-minute" data-match-id="{{ match.id }}">{{ match.display_minute }}</span></span>
+      {% elif match.status == "ft" %}<span class="ft-badge ms-auto">FT</span>
+      {% elif match.status == "ht" %}<span class="ht-badge ms-auto">HT</span>{% endif %}
+    </div>
+    <div class="match-teams">
+      <div class="team-side home-side">
+        <img src="{{ match.home_team.logo_url }}" alt="{{ match.home_team.name }}" class="team-logo-md" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+        <span class="team-name">{{ match.home_team.short_name|default:match.home_team.name }}</span>
+      </div>
+      <div class="score-center">
+        {% if match.status == "scheduled" %}
+          <span class="match-time-display font-mono">{{ match.kickoff|time:"H:i" }}</span>
+        {% else %}
+          <span class="score-display {% if match.is_live %}score-live{% endif %}" data-match-id="{{ match.id }}">
+            <span class="home-score {% if match.is_live and match.home_score > match.away_score %}score-winning{% endif %}">{{ match.home_score }}</span>
+            <span class="score-sep">-</span>
+            <span class="away-score {% if match.is_live and match.away_score > match.home_score %}score-winning{% endif %}">{{ match.away_score }}</span>
+          </span>
+          {% if match.home_ht_score is not None %}<span class="ht-score font-mono">({{ match.home_ht_score }}-{{ match.away_ht_score }} HT)</span>{% endif %}
+        {% endif %}
+      </div>
+      <div class="team-side away-side">
+        <span class="team-name text-end">{{ match.away_team.short_name|default:match.away_team.name }}</span>
+        <img src="{{ match.away_team.logo_url }}" alt="{{ match.away_team.name }}" class="team-logo-md" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+      </div>
+    </div>
+    {% if match.events.all %}
+    <div class="match-events-preview">
+      {% for event in match.events.all %}{% if event.event_type == "goal" or event.event_type == "penalty" %}
+      <span class="event-pill {% if event.team == match.home_team %}event-home{% else %}event-away{% endif %}">
+        &#x26BD; {{ event.minute_display }} {{ event.player.last_name|default:"" }}
+      </span>{% endif %}{% endfor %}
+    </div>{% endif %}
+  </a>
+</article>

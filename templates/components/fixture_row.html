@@ -1,0 +1,19 @@
+{% load static %}
+<div class="fixture-row" data-match-id="{{ match.id }}">
+  <div class="fixture-time font-mono">{{ match.kickoff|time:"H:i" }}</div>
+  <div class="fixture-competition">
+    <img src="{{ match.competition.logo_url }}" alt="" class="comp-logo-xs" loading="lazy" onerror="this.src='/static/images/default-league.svg'">
+  </div>
+  <div class="fixture-teams">
+    <span class="fixture-team">
+      <img src="{{ match.home_team.logo_url }}" alt="" class="team-logo-sm" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+      {{ match.home_team.short_name|default:match.home_team.name }}
+    </span>
+    <span class="fixture-vs">vs</span>
+    <span class="fixture-team">
+      <img src="{{ match.away_team.logo_url }}" alt="" class="team-logo-sm" loading="lazy" onerror="this.src='/static/images/default-team.svg'">
+      {{ match.away_team.short_name|default:match.away_team.name }}
+    </span>
+  </div>
+  <a href="{% url "match-detail" match.id %}" class="fixture-detail-link"><i class="bi bi-chevron-right"></i></a>
+</div>

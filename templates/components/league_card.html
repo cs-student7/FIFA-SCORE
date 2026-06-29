@@ -1,0 +1,21 @@
+{% load static %}
+<a href="{% url 'league-detail' comp.slug %}" class="league-card text-decoration-none">
+  <div class="league-card-logo">
+    {% if comp.logo %}
+      <img src="{{ comp.logo_url }}" alt="{{ comp.name }}"
+           onerror="this.parentElement.innerHTML='<i class=&quot;bi bi-star-fill&quot;></i>'">
+    {% else %}
+      <i class="bi bi-star-fill"></i>
+    {% endif %}
+  </div>
+  <div class="league-card-name">{{ comp.name }}</div>
+  <div class="league-card-country">
+    {% if comp.country %}
+      <img src="{{ comp.country.flag_url }}" alt="" class="flag-icon"
+           onerror="this.src='{% static "images/default-flag.svg" %}'">
+      <span>{{ comp.country.name }}</span>
+    {% else %}
+      <span>International</span>
+    {% endif %}
+  </div>
+</a>
