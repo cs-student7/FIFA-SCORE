@@ -1,39 +1,4 @@
-<<<<<<< HEAD
-# ⚽ GoalPulse — Live Football Score Platform
 
-A full-featured Django football scores platform using **SQLite** (zero-config, no PostgreSQL/Redis needed).
-
-## Quick Start
-
-```bash
-# 1. Create & activate virtual environment
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run database migrations
-python manage.py migrate
-
-# 4. Seed with demo data
-python manage.py seed_data
-
-# 5. Start the server
-python manage.py runserver
-```
-
-Visit **http://127.0.0.1:8000** — that's it!
-
-## Seed options
-
-```bash
-python manage.py seed_data --live 5    # 5 live matches
-python manage.py seed_data --clear     # wipe and re-seed
-```
-
-Admin login (created automatically by seed_data): **admin / admin123**  
-Admin panel: http://127.0.0.1:8000/admin/
 
 ## Pages
 
@@ -70,24 +35,7 @@ Admin panel: http://127.0.0.1:8000/admin/
 
 ## Tech Stack
 
-- **Django 5** + SQLite (zero-config database)
-- **Django REST Framework** — JSON API
-- **Bootstrap 5** dark theme + custom CSS
-- **Chart.js** — momentum chart
-- Live updates via **polling** (no WebSocket/Redis needed)
 
-
-
-  ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-    'anon': '1000/hour',
-    'user': '10000/hour',
-},
 =======
 # FIFA-SCORE
 FIFA Score is a Django-based football web application that delivers live match scores, fixtures, league standings, and team statistics for major international tournaments and European leagues. Built with real-time API integration and a responsive, user-friendly interface.
->>>>>>> d36033acfa8243cad123133b65e932d2fc491b3e
