@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-goalpulse-dev-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '.onrender.com,localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -70,12 +70,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ── Database – SQLite (zero-config) ───────────────────────
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'fifascoredb',
-        'USER': 'postgres',      # or your PostgreSQL username
-        'PASSWORD': '976530',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -116,8 +112,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ── REST Framework ────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ],
+    'rest_framework_simplejwt.authentication.JWTAuthentication',
+    'rest_framework.authentication.SessionAuthentication',
+],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
@@ -158,10 +155,6 @@ SITE_NAME = os.environ.get('SITE_NAME', 'GoalPulse')
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
 LIVE_UPDATE_INTERVAL = 30  # seconds (polling interval for live matches)
 
-INSTALLED_APPS += ['debug_toolbar']
-MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
-INTERNAL_IPS = ['127.0.0.1']
-
 
 from datetime import timedelta
 
@@ -197,8 +190,8 @@ ASGI_APPLICATION = 'config.asgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
     },
+}
 
 
 CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
@@ -215,7 +208,7 @@ API_FOOTBALL_KEY = config('API_FOOTBALL_KEY', default='')
 API_FOOTBALL_URL = config('API_FOOTBALL_URL', default='https://v3.football.api-sports.io')
 
 from decouple import config
-FOOTBALL_DATA_KEY = config('dec22564e2874e09f7dcc2a74f7aa0d3', default='')
+FOOTBALL_DATA_KEY = config('FOOTBALL_DATA_KEY', default='')
 
 
 WC_API_TOKEN = config('WC_API_TOKEN', default='')
