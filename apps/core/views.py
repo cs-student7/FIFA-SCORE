@@ -5,7 +5,9 @@ from apps.leagues.models import Competition
 from apps.matches.football_api import (
     get_wc_live_matches, get_wc_upcoming,
     get_wc_results, get_wc_groups,
+    get_live_matches, get_today_matches, TRACKED_LEAGUES,
 )
+
 
 class HomeView(TemplateView):
     template_name = 'home.html'
@@ -24,6 +26,16 @@ class HomeView(TemplateView):
             ctx['wc_upcoming'] = []
             ctx['wc_results'] = []
             ctx['wc_groups'] = []
+
+        # ── Multi-League Live & Today's Matches (API-Football) ─
+        try:
+            ctx['league_live']     = get_live_matches()
+            ctx['league_today']    = get_today_matches()
+            ctx['tracked_leagues'] = TRACKED_LEAGUES
+        except Exception:
+            ctx['league_live']     = []
+            ctx['league_today']    = []
+            ctx['tracked_leagues'] = TRACKED_LEAGUES
 
         # ── Featured competitions + standings (from DB) ────────
         featured = list(

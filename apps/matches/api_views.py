@@ -85,12 +85,12 @@ from apps.matches.football_api import (
 
 @api_view(['GET'])
 def live_matches(request):
-    """Called every 30 seconds by your frontend."""
+    """Called every 30 seconds by goalpulse.js ticker."""
     try:
         data = get_live_matches()
-        return Response({"count": len(data), "results": data})
-    except Exception as e:
-        return Response({"error": str(e), "results": []}, status=503)
+        return Response(data)
+    except Exception:
+        return Response([], status=200)
 
 
 @api_view(['GET'])

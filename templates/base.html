@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="FIFA SCORE – Live Football Scores & Statistics">
-<title>{% block title %}FIFA SCORE – Live Football Scores{% endblock %}</title>
+<title>{% block title %}LeaguePulse – Live Football Scores{% endblock %}</title>
 {% load static %}
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +33,7 @@
   <div class="container-fluid px-3 px-lg-4">
     <a class="navbar-brand gp-brand" href="{% url 'home' %}">
       <img src="{% static 'images/football.jpg' %}" alt="GoalPulse" class="brand-icon" style="width:32px;height:32px;object-fit:contain;">
-      <span class="brand-text">FIFA <span class="brand-accent">SCORE</span></span>
+      <span class="brand-text">LEAGUE <span class="brand-accent">PULSE</span></span>
     </a>
     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
@@ -85,8 +85,8 @@
     <div class="row align-items-center">
       <div class="col-md-4 mb-3 mb-md-0">
         <a href="{% url 'home' %}" class="gp-brand text-decoration-none">
-          <img src="{% static 'images/football.jpg' %}" alt="FIFA SCORE" class="brand-icon" style="width:32px;height:32px;object-fit:contain;">
-          <span class="brand-text">FIFA<span class="brand-accent">SCORE</span></span>
+          <img src="{% static 'images/football.jpg' %}" alt="LEAGUE PULSE" class="brand-icon" style="width:32px;height:32px;object-fit:contain;">
+          <span class="brand-text">LEAGUE <span class="brand-accent">PULSE</span></span>
         </a>
         <p class="text-muted small mt-2 mb-0">Real-time football data platform.</p>
       </div>
@@ -98,7 +98,7 @@
         </ul>
       </div>
       <div class="col-md-4 text-md-end">
-        <p class="text-muted small mb-0">© 2025 FIFA SCORE For demo use only.</p>
+        <p class="text-muted small mb-0">© 2026 LeaguePulse For demo use only.</p>
       </div>
     </div>
   </div>
@@ -108,68 +108,5 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<!-- GoalPulse JS -->
-<script>
-  const GP_CONFIG = {
-    wsScheme: window.location.protocol === 'https:' ? 'wss' : 'ws',
-    wsHost: window.location.host,
-    updateInterval: {{ LIVE_UPDATE_INTERVAL|default:15 }} * 1000,
-    isAuthenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
-  };
-</script>
-<script>
-  // Paste this inside your base.html or home.html <script> block
 
-async function refreshLiveScores() {
-    const res = await fetch('/api/v1/matches/live/');
-    const data = await res.json();
 
-    const container = document.getElementById('live-scores-container');
-    if (!data.results.length) {
-        container.innerHTML = '<p class="text-muted text-center py-4">No live matches right now</p>';
-        return;
-    }
-
-    container.innerHTML = data.results.map(m => {
-        const home = m.teams.home;
-        const away = m.teams.away;
-        const goals = m.goals;
-        const elapsed = m.fixture.status.elapsed;
-
-        return `
-        <div class="card bg-dark border-secondary mb-3">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="text-center flex-fill">
-                <img src="${home.logo}" width="32" class="mb-1"><br>
-                <strong>${home.name}</strong>
-              </div>
-              <div class="text-center px-3">
-                <span class="badge bg-danger mb-1">${elapsed}'</span><br>
-                <span class="fs-3 fw-bold">${goals.home ?? 0} - ${goals.away ?? 0}</span>
-              </div>
-              <div class="text-center flex-fill">
-                <img src="${away.logo}" width="32" class="mb-1"><br>
-                <strong>${away.name}</strong>
-              </div>
-            </div>
-          </div>
-        </div>`;
-    }).join('');
-}
-
-// Run immediately, then every 30 seconds
-refreshLiveScores();
-setInterval(refreshLiveScores, 30000);
-</script>
-<script>
-  const GP_CONFIG = {
-    updateInterval: 30000,
-    isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
-    csrfToken: '{{ csrf_token }}',
-  };
-</script>
-<script src="{% static 'js/goalpulse.js' %}"></script>
-{% block extra_js %}{% endblock %}
-</body>
-</html>
