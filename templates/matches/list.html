@@ -1,48 +1,79 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Fixtures – FIFA SCOrE{% endblock %}
+{% block title %}Fixtures – LeaguePulse{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 py-3">
-
-  <!-- Date picker bar -->
-  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
-    <h1 class="section-title mb-0"><i class="bi bi-calendar3 section-icon-clock me-1"></i>Fixtures</h1>
-    <form method="get" class="d-flex align-items-center gap-2 ms-auto">
-      <input type="date" name="date" value="{{ selected_date }}"
-             class="form-control form-control-sm"
-             style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:160px">
-      <button class="btn gp-btn-primary btn-sm" type="submit">Go</button>
-    </form>
+  <div class="section-block p-3 mb-4">
+    <h1 class="section-title mb-3"><i class="bi bi-calendar3 section-icon-clock me-1"></i>Fixtures</h1>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+      <a href="?date={{ yesterday_date }}{% if active_league %}&league={{ active_league }}{% endif %}"
+         class="btn btn-sm {% if selected_date == yesterday_date %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">Yesterday</a>
+      <a href="?date={{ today_date }}{% if active_league %}&league={{ active_league }}{% endif %}"
+         class="btn btn-sm {% if selected_date == today_date %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">Today</a>
+      <a href="?date={{ tomorrow_date }}{% if active_league %}&league={{ active_league }}{% endif %}"
+         class="btn btn-sm {% if selected_date == tomorrow_date %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">Tomorrow</a>
+      <form method="get" class="d-flex align-items-center gap-2">
+        {% if active_league %}<input type="hidden" name="league" value="{{ active_league }}">{% endif %}
+        <input type="date" name="date" value="{{ selected_date }}" class="form-control form-control-sm"
+               style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:150px">
+        <button class="btn gp-btn-primary btn-sm" type="submit">Go</button>
+      </form>
+    </div>
+    <div class="d-flex flex-wrap gap-1">
+      <a href="?date={{ selected_date }}"
+         class="btn btn-sm {% if not active_league %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">All Leagues</a>
+      {% for lg in api_leagues %}
+      <a href="?date={{ selected_date }}&league={{ lg.id }}"
+         class="btn btn-sm {% if lg.id == active_league %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">{{ lg.name }}</a>
+      {% endfor %}
+    </div>
   </div>
 
   {% if live_count %}
   <div class="mb-3">
-    <span class="live-badge-large pulse-ring">
-      <span class="live-dot"></span>{{ live_count }} LIVE
-    </span>
+    <span class="live-badge-large pulse-ring"><span class="live-dot"></span>{{ live_count }} LIVE</span>
   </div>
   {% endif %}
 
-  {% if matches %}
-    {% regroup matches by season.competition as comp_groups %}
-    {% for comp_group in comp_groups %}
+  {% if api_matches %}
+    {% regroup api_matches by league.name as league_groups %}
+    {% for group in league_groups %}
     <section class="section-block mb-4">
       <div class="section-header">
         <h2 class="section-title">
-          <img src="{{ comp_group.grouper.logo_url }}" alt="" class="comp-logo-xs me-1"
+          <img src="{{ group.list.0.league.logo }}" alt="" class="comp-logo-xs me-1"
                onerror="this.src='{% static "images/default-league.svg" %}'">
-          {{ comp_group.grouper.name }}
+          {{ group.grouper }}
         </h2>
-        <span class="section-count">{{ comp_group.list|length }} match{{ comp_group.list|length|pluralize:"es" }}</span>
+        <span class="section-count">{{ group.list|length }} match{{ group.list|length|pluralize:"es" }}</span>
       </div>
-      <div class="fixture-list">
-        {% for match in comp_group.list %}
-          {% if match.status == 'scheduled' %}
-            {% include "components/fixture_row.html" with match=match %}
-          {% else %}
-            {% include "components/match_card.html" with match=match card_type=match.status %}
-          {% endif %}
+      <div class="p-2">
+        {% for m in group.list %}
+        <a href="{% url 'fixture-center' m.fixture.id %}"
+           class="card bg-dark border-secondary mb-2 p-3 fixture-click-card text-decoration-none text-light">
+          <div class="match-center-row">
+            <div class="d-flex align-items-center gap-2 match-team-home">
+              <img src="{{ m.teams.home.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
+              <strong class="text-truncate">{{ m.teams.home.name }}</strong>
+            </div>
+            <div class="match-center">
+              {% if m.fixture.status.short == 'NS' %}
+                <span class="badge bg-secondary">{{ m.fixture.date|slice:"11:16" }} UTC</span>
+              {% elif m.fixture.status.short in '1H,2H,HT,ET,P,LIVE,BT' %}
+                <span class="badge bg-danger mb-1">{{ m.fixture.status.short }} {{ m.fixture.status.elapsed|default:"" }}'</span><br>
+                <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
+              {% else %}
+                <span class="badge bg-dark border border-secondary text-muted mb-1">{{ m.fixture.status.short }}</span><br>
+                <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
+              {% endif %}
+            </div>
+            <div class="d-flex align-items-center justify-content-end gap-2 match-team-away">
+              <strong class="text-truncate">{{ m.teams.away.name }}</strong>
+              <img src="{{ m.teams.away.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
+            </div>
+          </div>
+        </a>
         {% endfor %}
       </div>
     </section>
@@ -50,23 +81,8 @@
   {% else %}
   <div class="section-block p-5 text-center text-muted">
     <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
-    <p class="mb-0">No matches found for this date.</p>
+    <p class="mb-0">No tracked league matches found for {{ selected_date }}.</p>
   </div>
   {% endif %}
-
-  {% if is_paginated %}
-  <nav class="d-flex justify-content-center mt-4">
-    <ul class="pagination">
-      {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&date={{ selected_date }}">«</a></li>
-      {% endif %}
-      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
-      {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&date={{ selected_date }}">»</a></li>
-      {% endif %}
-    </ul>
-  </nav>
-  {% endif %}
-
 </div>
 {% endblock %}

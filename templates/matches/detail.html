@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 {% block title %}{{ match.home_team.name }} vs {{ match.away_team.name }} - GoalPulse{% endblock %}
 
 {% block content %}
@@ -163,5 +164,5 @@ const MOMENTUM_DATA = [{% for m in match.momentum_data.all %}{"minute":{{ m.minu
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static "js/match_detail.js" %}"></script>
+<script src="{% static "js/match_detail.js" %}?v=2"></script>
 {% endblock %}

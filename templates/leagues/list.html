@@ -1,71 +1,100 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Leagues & Competitions – GoalPulse{% endblock %}
+{% block title %}Leagues & Standings – LeaguePulse{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 py-3">
 
   <div class="section-header mb-4 px-0">
-    <h1 class="section-title"><i class="bi bi-trophy section-icon-gold me-1"></i>Leagues & Competitions</h1>
+    <h1 class="section-title"><i class="bi bi-trophy section-icon-gold me-1"></i>Leagues & Standings</h1>
   </div>
 
-  {% if featured %}
-<section class="section-block mb-4">
-  <div class="section-header"><h2 class="section-title"><i class="bi bi-star-fill section-icon-gold"></i> Featured</h2></div>
-  <div class="competitions-grid">
-    {% for comp in featured %}
-    <a href="{% url 'league-detail' comp.slug %}" class="competition-card">
-      <div class="comp-logo-wrap">
-        <img src="{{ comp.logo_url }}" alt="{{ comp.name }}" class="comp-logo" loading="lazy"
-             onerror="this.src='{% static "images/default-league.svg" %}'">
-      </div>
-      <span class="comp-name">{{ comp.name }}</span>
-     <span class="comp-country text-muted small d-flex align-items-center gap-1">
-  {% if comp.country %}
-  <img src="{{ comp.country.flag_url }}" alt="{{ comp.country.name }}" class="country-flag-xs" width="16" height="11" onerror="this.src='{% static "images/default-flag.svg" %}'">
-  {{ comp.country.name }}
-  {% else %}
-  International
-  {% endif %}
-</span>
-    </a>
-    {% endfor %}
-  </div>
-</section>
-{% endif %}
-  {% regroup competitions by comp_type as type_groups %}
-  {% for type_group in type_groups %}
+  <!-- Tracked Leagues Grid -->
   <section class="section-block mb-4">
     <div class="section-header">
-      <h2 class="section-title">
-        {% if type_group.grouper == 'league' %}<i class="bi bi-list-ol section-icon-table me-1"></i>Leagues
-        {% elif type_group.grouper == 'cup' %}<i class="bi bi-award section-icon-gold me-1"></i>Cup Competitions
-        {% elif type_group.grouper == 'international' %}<i class="bi bi-globe section-icon-cyan me-1"></i>International
-        {% else %}<i class="bi bi-flag me-1"></i>{{ type_group.grouper|title }}{% endif %}
-      </h2>
-      <span class="section-count">{{ type_group.list|length }}</span>
+      <h2 class="section-title"><i class="bi bi-star-fill section-icon-gold"></i> Select Competition</h2>
     </div>
     <div class="competitions-grid">
-      {% for comp in type_group.list %}
-      <a href="{% url 'league-detail' comp.slug %}" class="competition-card">
+      {% for lg in api_leagues %}
+      <a href="?league={{ lg.id }}" class="competition-card {% if lg.id == active_league %}border-info{% endif %}">
         <div class="comp-logo-wrap">
-          <img src="{{ comp.logo_url }}" alt="{{ comp.name }}" class="comp-logo" loading="lazy"
+          <img src="{{ lg.logo }}" alt="{{ lg.name }}" class="comp-logo" loading="lazy"
                onerror="this.src='{% static "images/default-league.svg" %}'">
         </div>
-        <span class="comp-name">{{ comp.name }}</span>
-<span class="comp-country text-muted small d-flex align-items-center gap-1">
-  {% if comp.country %}
-  <img src="{{ comp.country.flag_url }}" alt="{{ comp.country.name }}" class="country-flag-xs" width="16" height="11" onerror="this.src='{% static "images/default-flag.svg" %}'">
-  {{ comp.country.name }}
-  {% else %}
-  International
-  {% endif %}
-</span>
+        <span class="comp-name">{{ lg.name }}</span>
+        <span class="comp-country text-muted small">{{ lg.country }}</span>
       </a>
       {% endfor %}
     </div>
   </section>
-  {% endfor %}
 
+  <!-- Active League Standings Table -->
+  <section class="section-block">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="bi bi-list-ol section-icon-table me-1"></i>{{ active_league_info.name }} – Standings
+      </h2>
+    </div>
+
+    {% if standings %}
+<div class="standings-table-wrap">
+  <table class="standings-table w-100 align-middle">
+    <thead>
+      <tr class="text-muted small border-bottom border-secondary">
+        <th style="width:45px;padding-left:14px">Club</th>
+        <th></th>
+        <th class="text-center">MP</th>
+        <th class="text-center">W</th>
+        <th class="text-center">D</th>
+        <th class="text-center">L</th>
+        <th class="text-center d-none d-md-table-cell">GF</th>
+        <th class="text-center d-none d-md-table-cell">GA</th>
+        <th class="text-center">GD</th>
+        <th class="text-center">Pts</th>
+        <th class="text-center d-none d-sm-table-cell">Last 5</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in standings %}
+      <tr class="standing-row border-bottom border-secondary"
+          style="border-left: 4px solid {% if row.rank <= 4 %}#4285f4{% elif row.rank == 5 %}#fa7b17{% elif row.rank >= 18 %}#ea4335{% else %}transparent{% endif %};">
+        <td class="font-mono text-muted" style="padding-left:12px">{{ row.rank }}</td>
+        <td>
+          <div class="d-flex align-items-center gap-2 py-1">
+            <img src="{{ row.team.logo }}" width="22" height="22" alt="" loading="lazy">
+            <span class="fw-600">{{ row.team.name }}</span>
+          </div>
+        </td>
+        <td class="text-center font-mono">{{ row.all.played }}</td>
+        <td class="text-center font-mono">{{ row.all.win }}</td>
+        <td class="text-center font-mono">{{ row.all.draw }}</td>
+        <td class="text-center font-mono">{{ row.all.lose }}</td>
+        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.all.goals.for }}</td>
+        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.all.goals.against }}</td>
+        <td class="text-center font-mono">{{ row.goalsDiff }}</td>
+        <td class="text-center font-mono fw-bold text-white">{{ row.points }}</td>
+        <td class="text-center d-none d-sm-table-cell">
+          <div class="d-inline-flex gap-1">
+            {% for ch in row.form|default:"" %}
+              {% if ch == 'W' %}
+                <span class="badge rounded-circle bg-success p-1" style="width:18px;height:18px;font-size:10px" title="Win">✓</span>
+              {% elif ch == 'D' %}
+                <span class="badge rounded-circle bg-secondary p-1" style="width:18px;height:18px;font-size:10px" title="Draw">–</span>
+              {% elif ch == 'L' %}
+                <span class="badge rounded-circle bg-danger p-1" style="width:18px;height:18px;font-size:10px" title="Loss">✕</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="p-3 small text-muted d-flex flex-wrap gap-3">
+    <span><span class="badge me-1" style="background:#4285f4">&nbsp;</span>Champions League</span>
+    <span><span class="badge me-1" style="background:#fa7b17">&nbsp;</span>Europa League</span>
+    <span><span class="badge me-1" style="background:#ea4335">&nbsp;</span>Relegation</span>
+  </div>
 </div>
+{% endif %}
 {% endblock %}

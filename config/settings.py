@@ -156,6 +156,8 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 SITE_NAME = os.environ.get('SITE_NAME', 'GoalPulse')
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
 LIVE_UPDATE_INTERVAL = 30  # seconds (polling interval for live matches)
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
 
 
 from datetime import timedelta

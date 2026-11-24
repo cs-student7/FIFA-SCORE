@@ -1,7 +1,7 @@
 import requests
 from django.conf import settings
 from django.core.cache import cache
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 # ── api-sports.io ─────────────────────────────────────────────
 AP_HEADERS = {"x-apisports-key": settings.API_FOOTBALL_KEY}
@@ -24,6 +24,7 @@ TRACKED_LEAGUES = {
 def _ap_get(endpoint, params=None):
     if not settings.API_FOOTBALL_KEY:
         return []
+    stale_key = f"ap_stale_{endpoint}_{str(params)}"
     try:
         r = requests.get(
             f"{AP_BASE}/{endpoint}",
@@ -35,11 +36,14 @@ def _ap_get(endpoint, params=None):
         data = r.json()
         if data.get("errors"):
             print("API-Football error:", data["errors"])
-            return []
-        return data.get("response", [])
+            return cache.get(stale_key, [])
+        response = data.get("response", [])
+        if response:
+            cache.set(stale_key, response, 86400)  # 24-hour backup cache
+        return response
     except Exception as e:
         print("API-Football request failed:", e)
-        return []
+        return cache.get(stale_key, [])
 
 
 def _wc_get(endpoint):
@@ -66,7 +70,8 @@ def _wc_get(endpoint):
 def get_live_matches():
     """
     1 API call returns ALL live matches across all tracked leagues.
-    Cached for 3 minutes (180s) to stay safely within 100 req/day.
+    Cached for one minute so the site stays responsive without every visitor
+    creating another provider request.
     Normalized to match static/js/goalpulse.js!
     """
     cached = cache.get("ap_live_matches")
@@ -101,13 +106,14 @@ def get_live_matches():
         })
 
     normalized.sort(key=lambda x: TRACKED_LEAGUES.get(x["league_id"], {}).get("priority", 99))
-    cache.set("ap_live_matches", normalized, 180)
+    cache.set("ap_live_matches", normalized, 60)
     return normalized
 
 
 def get_today_matches(league_id=None):
     """
-    1 API call fetches today's fixtures across ALL tracked leagues (cached 1 hour).
+    Fetches today's fixtures across ALL tracked leagues with a short live-safe cache.
+    If today has 0 matches (e.g., quiet Monday), automatically fetches tomorrow's fixtures!
     """
     today_str = str(date.today())
     cache_key = f"ap_today_matches_{today_str}_{league_id or 'all'}"
@@ -121,12 +127,19 @@ def get_today_matches(league_id=None):
 
     raw = _ap_get("fixtures", params)
     filtered = [m for m in raw if m["league"]["id"] in TRACKED_LEAGUES]
+
+    # Fallback to tomorrow's fixtures if today has 0 tracked matches
+    if not filtered and not league_id:
+        tomorrow_str = str(date.today() + timedelta(days=1))
+        raw_tomorrow = _ap_get("fixtures", {"date": tomorrow_str})
+        filtered = [m for m in raw_tomorrow if m["league"]["id"] in TRACKED_LEAGUES]
+
     filtered.sort(key=lambda m: (
         TRACKED_LEAGUES[m["league"]["id"]]["priority"],
         m["fixture"]["timestamp"],
     ))
 
-    cache.set(cache_key, filtered, 3600)
+    cache.set(cache_key, filtered, 60)
     return filtered
 
 
@@ -151,7 +164,7 @@ def get_match_events(fixture_id):
     if cached is not None:
         return cached
     data = _ap_get("fixtures/events", {"fixture": fixture_id})
-    cache.set(cache_key, data, 180)
+    cache.set(cache_key, data, 60)
     return data
 
 
@@ -161,7 +174,7 @@ def get_match_lineups(fixture_id):
     if cached is not None:
         return cached
     data = _ap_get("fixtures/lineups", {"fixture": fixture_id})
-    cache.set(cache_key, data, 3600)
+    cache.set(cache_key, data, 3600 if data else 60)
     return data
 
 
@@ -171,7 +184,17 @@ def get_match_stats(fixture_id):
     if cached is not None:
         return cached
     data = _ap_get("fixtures/statistics", {"fixture": fixture_id})
-    cache.set(cache_key, data, 180)
+    cache.set(cache_key, data, 60)
+    return data
+
+
+def get_match_player_stats(fixture_id):
+    cache_key = f"ap_player_stats_{fixture_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    data = _ap_get("fixtures/players", {"fixture": fixture_id})
+    cache.set(cache_key, data, 60)
     return data
 
 
@@ -289,3 +312,116 @@ def get_wc_groups():
 
     cache.set('wc_groups_enriched', result, 120)
     return result
+
+def get_all_tracked_leagues():
+    """Returns metadata + logos for all tracked leagues (0 API calls needed)."""
+    return [
+        {
+            "id": lid,
+            "name": info["name"],
+            "country": info["country"],
+            "logo": f"https://media.api-sports.io/football/leagues/{lid}.png",
+        }
+        for lid, info in TRACKED_LEAGUES.items()
+    ]
+
+
+def get_league_teams(league_id=39, season=2026):
+    """Fetches all teams in a league (cached 24 hours -> 1 API call/day)."""
+    cache_key = f"ap_teams_{league_id}_{season}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _ap_get("teams", {"league": league_id, "season": season})
+    cache.set(cache_key, raw, 86400)
+    return raw
+
+
+def get_top_scorers(league_id=39, season=2026):
+    """Fetches top scorers/players for a league (cached 12 hours)."""
+    cache_key = f"ap_topscorers_{league_id}_{season}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _ap_get("players/topscorers", {"league": league_id, "season": season})
+    cache.set(cache_key, raw, 43200)
+    return raw
+def get_all_tracked_leagues():
+    """Returns metadata + official logos for all tracked leagues (0 API calls)."""
+    return [
+        {
+            "id": lid,
+            "name": info["name"],
+            "country": info["country"],
+            "logo": f"https://media.api-sports.io/football/leagues/{lid}.png",
+        }
+        for lid, info in TRACKED_LEAGUES.items()
+    ]
+
+
+def get_league_teams(league_id=39, season=2026):
+    """Fetches all teams in a league (cached 24 hours -> max 1 API call/day per league)."""
+    cache_key = f"ap_teams_{league_id}_{season}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _ap_get("teams", {"league": league_id, "season": season})
+    cache.set(cache_key, raw, 86400)
+    return raw
+
+
+def get_top_scorers(league_id=39, season=2026):
+    """Fetches top players/scorers in a league (cached 12 hours)."""
+    cache_key = f"ap_topscorers_{league_id}_{season}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _ap_get("players/topscorers", {"league": league_id, "season": season})
+    cache.set(cache_key, raw, 43200)
+    return raw
+def get_fixtures_by_date(date_str, league_id=None):
+    """
+    Fetches fixtures for a specific YYYY-MM-DD date across all tracked leagues.
+    """
+    cache_key = f"ap_fixtures_date_{date_str}"
+    cached = cache.get(cache_key)
+    if cached is None:
+        raw = _ap_get("fixtures", {"date": date_str})
+        cached = [m for m in raw if m["league"]["id"] in TRACKED_LEAGUES]
+        cached.sort(key=lambda m: (
+            TRACKED_LEAGUES[m["league"]["id"]]["priority"],
+            m["fixture"]["timestamp"],
+        ))
+        cache.set(cache_key, cached, 60)
+
+    if league_id:
+        return [m for m in cached if m["league"]["id"] == league_id]
+    return cached
+
+def get_fixture_full_details(fixture_id):
+    """
+    Combines fixture, event, lineup, statistics and player-rating data for the match center.
+    """
+    cache_key = f"ap_fixture_full_{fixture_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw = _ap_get("fixtures", {"id": fixture_id})
+    if not raw:
+        return {}
+
+    item = raw[0]
+    status_short = item.get("fixture", {}).get("status", {}).get("short", "NS")
+    finished_statuses = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"}
+    item["events"] = get_match_events(fixture_id)
+    item["lineups"] = get_match_lineups(fixture_id)
+    item["statistics"] = get_match_stats(fixture_id)
+    item["players"] = get_match_player_stats(fixture_id)
+    ttl = 86400 if status_short in finished_statuses else 60
+    cache.set(cache_key, item, ttl)
+    return item

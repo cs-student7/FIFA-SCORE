@@ -1,24 +1,39 @@
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, TemplateView
 from django.db.models import Q
 from .models import Team
+from apps.matches.football_api import (
+    TRACKED_LEAGUES,
+    get_all_tracked_leagues,
+    get_league_teams,
+)
 
 
-class TeamListView(ListView):
-    model = Team
+class TeamListView(TemplateView):
     template_name = 'teams/list.html'
-    context_object_name = 'teams'
-    paginate_by = 30
-    queryset = Team.objects.select_related('country').order_by('name')
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        q = self.request.GET.get('q', '').strip()
-        if q:
-            qs = qs.filter(Q(name__icontains=q) | Q(city__icontains=q))
-        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        try:
+            active_league = int(self.request.GET.get('league', 39))
+        except ValueError:
+            active_league = 39
+
+        if active_league not in TRACKED_LEAGUES:
+            active_league = 39
+
+        q = self.request.GET.get('q', '').strip().lower()
+        api_teams = get_league_teams(league_id=active_league, season=2026)
+
+        if q:
+            api_teams = [
+                item for item in api_teams
+                if q in item.get('team', {}).get('name', '').lower()
+                or q in item.get('venue', {}).get('city', '').lower()
+            ]
+
+        ctx['api_leagues'] = get_all_tracked_leagues()
+        ctx['active_league'] = active_league
+        ctx['api_teams'] = api_teams
         ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
 
@@ -31,7 +46,6 @@ class TeamDetailView(DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         from apps.matches.models import Match
-        from django.utils import timezone
         ctx['recent_matches'] = Match.objects.filter(
             Q(home_team=self.object) | Q(away_team=self.object),
             status='ft'

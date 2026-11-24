@@ -1,12 +1,24 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Teams – GoalPulse{% endblock %}
+{% block title %}Teams – LeaguePulse{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 py-3">
-  <div class="section-block p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
-    <h1 class="section-title mb-0"><i class="bi bi-shield-fill me-1"></i>Teams</h1>
+  <div class="section-block p-3 mb-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+    <h1 class="section-title mb-0 text-nowrap">
+      <i class="bi bi-shield-fill me-1"></i>Teams
+    </h1>
+    <!-- League Filter Pills -->
+    <div class="d-flex flex-wrap gap-1">
+      {% for lg in api_leagues %}
+      <a href="?league={{ lg.id }}" class="btn btn-sm {% if lg.id == active_league %}gp-btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ lg.name }}
+      </a>
+      {% endfor %}
+    </div>
+
     <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+      <input type="hidden" name="league" value="{{ active_league }}">
       <input type="search" name="q" value="{{ search_query }}" placeholder="Search teams…"
              class="form-control form-control-sm"
              style="background:var(--gp-bg);color:var(--gp-text);border-color:var(--gp-border);width:200px">
@@ -14,7 +26,7 @@
     </form>
   </div>
 
-  {% if teams %}
+  {% if api_teams %}
   <div class="section-block">
     <div class="standings-table-wrap">
       <table class="standings-table w-100">
@@ -23,39 +35,30 @@
             <th class="col-team" style="text-align:left;padding-left:16px">Team</th>
             <th>Country</th>
             <th>Stadium</th>
+            <th>City</th>
             <th>Founded</th>
           </tr>
         </thead>
         <tbody>
-          {% for team in teams %}
+          {% for item in api_teams %}
           <tr class="standing-row">
             <td class="col-team">
-              <a href="{% url 'team-detail' team.slug %}" class="d-flex align-items-center gap-2 text-decoration-none" style="color:inherit">
-                <img src="{{ team.logo_url }}" alt="" class="team-logo-sm" loading="lazy"
+              <div class="d-flex align-items-center gap-2">
+                <img src="{{ item.team.logo }}" alt="" class="team-logo-sm" loading="lazy"
                      onerror="this.src='{% static "images/default-team.svg" %}'">
-                <span class="fw-600">{{ team.name }}</span>
-              </a>
+                <span class="fw-600">{{ item.team.name }}</span>
+              </div>
             </td>
-            <td class="text-muted">{{ team.country.name|default:"–" }}</td>
-            <td class="text-muted small">{{ team.stadium|default:"–" }}</td>
-            <td class="font-mono text-muted">{{ team.founded|default:"–" }}</td>
+            <td class="text-muted">{{ item.team.country|default:"–" }}</td>
+            <td class="text-muted small">{{ item.venue.name|default:"–" }}</td>
+            <td class="text-muted small">{{ item.venue.city|default:"–" }}</td>
+            <td class="font-mono text-muted">{{ item.team.founded|default:"–" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
-
-  {% if is_paginated %}
-  <nav class="d-flex justify-content-center mt-4">
-    <ul class="pagination">
-      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}">«</a></li>{% endif %}
-      <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}">»</a></li>{% endif %}
-    </ul>
-  </nav>
-  {% endif %}
-
   {% else %}
   <div class="section-block p-5 text-center text-muted">
     <i class="bi bi-shield-x fs-1 d-block mb-3"></i>

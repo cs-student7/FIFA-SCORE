@@ -2,8 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.permissions import AllowAny
-from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from .models import Match, MatchStatistic, MatchMomentum, MatchEvent
 from .serializers import (
     MatchListSerializer, MatchDetailSerializer,
@@ -75,11 +76,12 @@ class MatchEventsAPIView(APIView):
         ).order_by('minute', 'extra_time')
         return Response(MatchEventSerializer(events, many=True).data)
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from apps.matches.football_api import (
-    get_live_matches, get_match_events as get_match_events,
-    get_match_lineups, get_match_stats, get_today_matches
+    get_live_matches, get_match_events,
+    get_match_lineups, get_match_stats, get_today_matches,
+    get_fixture_full_details,
 )
 
 
@@ -116,6 +118,64 @@ def match_stats(request, fixture_id):
         return Response(get_match_stats(fixture_id))
     except Exception as e:
         return Response({"error": str(e)}, status=503)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def match_notifications(request):
+    """Public feed of recent match events; it contains no user/account data."""
+    cache_key = 'public_match_notifications'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return Response(cached)
+
+    live = get_live_matches()
+    today = get_today_matches()
+    candidates = {}
+    for match in live:
+        candidates[match['id']] = {
+            'timestamp': 0,
+            'league': match.get('league_name', ''),
+            'home_team': (match.get('home_team') or {}).get('name', ''),
+            'away_team': (match.get('away_team') or {}).get('name', ''),
+        }
+    completed = [
+        match for match in today
+        if match.get('fixture', {}).get('status', {}).get('short')
+        in {'FT', 'AET', 'PEN'}
+    ]
+    for match in completed[-10:]:
+        candidates[match.get('fixture', {}).get('id')] = {
+            'timestamp': match.get('fixture', {}).get('timestamp') or 0,
+            'league': (match.get('league') or {}).get('name', ''),
+            'home_team': (match.get('teams', {}).get('home') or {}).get('name', ''),
+            'away_team': (match.get('teams', {}).get('away') or {}).get('name', ''),
+        }
+    candidates.pop(None, None)
+
+    feed = []
+    for fixture_id, match in candidates.items():
+        for event in get_match_events(fixture_id):
+            event_time = event.get('time', {})
+            feed.append({
+                'fixture_id': fixture_id,
+                'league': match['league'],
+                'home_team': match['home_team'],
+                'away_team': match['away_team'],
+                'minute': event_time.get('elapsed'),
+                'extra_minute': event_time.get('extra'),
+                'team': (event.get('team') or {}).get('name', ''),
+                'player': (event.get('player') or {}).get('name', ''),
+                'assist': (event.get('assist') or {}).get('name', ''),
+                'type': event.get('type', ''),
+                'detail': event.get('detail', ''),
+                'timestamp': match['timestamp'],
+            })
+
+    feed.sort(key=lambda event: (event['timestamp'], event['minute'] or 0, event['extra_minute'] or 0), reverse=True)
+    feed = feed[:50]
+    cache.set(cache_key, feed, 30)
+    return Response(feed)
     
 @api_view(['GET'])
 def wc_live(request):
@@ -148,3 +208,12 @@ def wc_all_data(request):
         "upcoming": get_wc_upcoming(),
         "results":  get_wc_results()[:6],
     })
+from .football_api import get_fixture_full_details, get_live_matches
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def fixture_full_center_api(request, fixture_id):
+    data = get_fixture_full_details(fixture_id)
+    if not data:
+        return Response({"detail": "Match details unavailable"}, status=404)
+    return Response(data)

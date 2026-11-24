@@ -1,16 +1,18 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Notifications - GoalPulse{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <h1 class="section-title mb-4">Notifications</h1>
-  {% for notif in user.notifications.all %}
-  <div class="section-block p-3 mb-2 {% if not notif.is_read %}border-start border-3 border-danger{% endif %}">
-    <strong>{{ notif.title }}</strong><br>
-    <span class="text-muted small">{{ notif.message }}</span>
-    <span class="float-end text-muted small font-mono">{{ notif.created_at|timesince }} ago</span>
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="section-title mb-0"><i class="bi bi-bell-fill me-2"></i>Match Notifications</h1>
+    <span class="text-muted small">Live match events · no account required</span>
   </div>
-  {% empty %}
-  <p class="text-center text-muted">No notifications yet.</p>
-  {% endfor %}
+  <div id="match-notification-feed" aria-live="polite">
+    <p class="text-center text-muted py-4">Loading match events…</p>
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/match_notifications.js' %}?v=2"></script>
 {% endblock %}

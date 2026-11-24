@@ -131,6 +131,36 @@ body{background-color:var(--gp-bg);color:var(--gp-text);font-family:var(--gp-fon
 .fixture-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--gp-border);transition:background var(--transition)}
 .fixture-row:last-child{border-bottom:none}
 .fixture-row:hover{background:rgba(255,255,255,.03)}
+.match-center-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 140px minmax(0,1fr);
+  align-items:center;
+  width:100%;
+}
+.match-center-row .match-team-home,
+.match-center-row .match-team-away{
+  min-width:0;
+}
+.match-center-row .match-team-home{
+  justify-self:start;
+}
+.match-center-row .match-team-away{
+  justify-self:end;
+}
+.match-center-row .match-center{
+  justify-self:center;
+  width:140px;
+  text-align:center;
+  white-space:nowrap;
+}
+@media (max-width:576px){
+  .match-center-row{
+    grid-template-columns:minmax(0,1fr) 110px minmax(0,1fr);
+  }
+  .match-center-row .match-center{
+    width:110px;
+  }
+}
 .fixture-time{font-size:13px;font-weight:600;color:var(--gp-cyan)}
 .fixture-teams{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow:hidden}
 .fixture-team{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

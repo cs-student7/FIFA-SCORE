@@ -1,29 +1,39 @@
-from django.views.generic import DetailView, ListView
-from django.db.models import Q
+from django.views.generic import DetailView, TemplateView
 from .models import Player
+from apps.matches.football_api import (
+    TRACKED_LEAGUES,
+    get_all_tracked_leagues,
+    get_top_scorers,
+)
 
 
-class PlayerListView(ListView):
-    model = Player
+class PlayerListView(TemplateView):
     template_name = 'players/list.html'
-    context_object_name = 'players'
-    paginate_by = 30
-
-    def get_queryset(self):
-        qs = Player.objects.select_related('current_team', 'nationality').filter(is_active=True)
-        q = self.request.GET.get('q', '').strip()
-        if q:
-            qs = qs.filter(Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(display_name__icontains=q))
-        pos = self.request.GET.get('position')
-        if pos:
-            qs = qs.filter(position=pos)
-        return qs.order_by('last_name')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        try:
+            active_league = int(self.request.GET.get('league', 39))
+        except ValueError:
+            active_league = 39
+
+        if active_league not in TRACKED_LEAGUES:
+            active_league = 39
+
+        q = self.request.GET.get('q', '').strip().lower()
+        api_players = get_top_scorers(league_id=active_league, season=2026)
+
+        if q:
+            api_players = [
+                item for item in api_players
+                if q in item.get('player', {}).get('name', '').lower()
+                or q in item.get('statistics', [{}])[0].get('team', {}).get('name', '').lower()
+            ]
+
+        ctx['api_leagues'] = get_all_tracked_leagues()
+        ctx['active_league'] = active_league
+        ctx['api_players'] = api_players
         ctx['search_query'] = self.request.GET.get('q', '')
-        ctx['positions'] = Player.POSITION_CHOICES
-        ctx['selected_position'] = self.request.GET.get('position', '')
         return ctx
 
 

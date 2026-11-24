@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Match Center – LeaguePulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-4">
+  <div id="fixture-center"
+       data-fixture-id="{{ fixture_id }}"
+       data-endpoint="{% url 'api-fixture-full-center' fixture_id %}">
+    <div class="section-block p-4 mb-4 text-center">
+      <div class="text-muted small mb-3" id="center-league">Match Center</div>
+      <div class="d-grid align-items-center gap-3" style="grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)">
+        <div class="text-end">
+          <a id="center-home-link" class="text-decoration-none text-reset fw-bold fs-5" href="#"></a>
+          <div id="center-home-scorers" class="small text-muted mt-1"></div>
+        </div>
+        <div class="text-center">
+          <div class="fs-2 fw-bold" id="center-score">– : –</div>
+          <div class="small text-muted" id="center-status">Loading match…</div>
+        </div>
+        <div class="text-start">
+          <a id="center-away-link" class="text-decoration-none text-reset fw-bold fs-5" href="#"></a>
+          <div id="center-away-scorers" class="small text-muted mt-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#center-timeline" type="button" role="tab">Timeline</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#center-stats" type="button" role="tab">Stats</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#center-lineups" type="button" role="tab">Lineups & Ratings</button></li>
+    </ul>
+
+    <div class="tab-content">
+      <section class="tab-pane fade show active" id="center-timeline" role="tabpanel">
+        <div class="section-block p-3">
+          <h2 class="section-title mb-3">Match Timeline</h2>
+          <div id="center-events" class="d-flex flex-column gap-2">
+            <p class="text-muted mb-0">Loading events…</p>
+          </div>
+        </div>
+      </section>
+      <section class="tab-pane fade" id="center-stats" role="tabpanel">
+        <div class="section-block p-3">
+          <h2 class="section-title mb-3">Match Statistics</h2>
+          <div id="center-statistics"><p class="text-muted mb-0">Loading statistics…</p></div>
+        </div>
+      </section>
+      <section class="tab-pane fade" id="center-lineups" role="tabpanel">
+        <div class="section-block p-3">
+          <h2 class="section-title mb-3">Lineups & Player Ratings</h2>
+          <div id="center-lineups-content"><p class="text-muted mb-0">Loading lineups…</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/fixture_center.js' %}?v=2"></script>
+{% endblock %}
