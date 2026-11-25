@@ -3,6 +3,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+from django.http import HttpResponse
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
+
+def service_worker(request):
+    sw_path = settings.BASE_DIR / 'static' / 'js' / 'sw.js'
+    return HttpResponse(sw_path.read_text(encoding='utf-8'), content_type='application/javascript')
 
 admin.site.site_header = 'GoalPulse Admin'
 admin.site.site_title = 'GoalPulse'
@@ -34,14 +44,9 @@ if settings.DEBUG:
     urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
 
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-    TokenVerifyView,
-)
-
 urlpatterns += [
     path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain'),
     path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/v1/auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('sw.js', service_worker, name='service_worker'),
 ]

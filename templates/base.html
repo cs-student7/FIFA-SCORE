@@ -6,6 +6,9 @@
 <meta name="description" content="FIFA SCORE – Live Football Scores & Statistics">
 <title>{% block title %}LeaguePulse – Live Football Scores{% endblock %}</title>
 {% load static %}
+<link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +22,34 @@
 {% block extra_css %}{% endblock %}
 </head>
 <body>
+<button id="pwa-install-btn" style="display:none; position:fixed; bottom:20px; right:20px; z-index:9999;" class="btn btn-primary shadow">
+  Install League Plus
+</button>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+
+  let deferredPrompt;
+  const installBtn = document.getElementById('pwa-install-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
+</script>
 
 <!-- Live Score Ticker -->
 <div id="live-ticker" class="live-ticker" role="marquee" aria-live="polite">
