@@ -6,3 +6,10 @@ python-dotenv
 python-decouple
 daphne
 channels
+djangorestframework
+django-cors-headers
+django-crispy-forms
+crispy-bootstrap5
+django-filter
+django-debug-toolbar
+djangorestframework-simplejwt
