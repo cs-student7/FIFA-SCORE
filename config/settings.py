@@ -194,6 +194,10 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+        'user': '120/minute',
+    },
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
@@ -261,3 +265,24 @@ API_FOOTBALL_URL = os.getenv('API_FOOTBALL_URL', 'https://v3.football.api-sports
 WC_API_TOKEN = os.getenv('WC_API_TOKEN', '')
 FIVE_DOLLAR_API_KEY = os.getenv('FIVE_DOLLAR_API_KEY', '')
 FIVE_DOLLAR_API_KEY_2 = os.getenv('FIVE_DOLLAR_API_KEY_2', '')
+
+if not DEBUG:
+    # Restrict allowed domains (never leave as ['*'] in production)
+    ALLOWED_HOSTS = ['league-plus.onrender.com', '.onrender.com']
+
+    # Enforce HTTPS behind Render's reverse proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+
+    # Protect session & CSRF cookies from interception or XSS theft
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+    # HTTP Strict Transport Security (HSTS) & browser XSS/framing headers
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
