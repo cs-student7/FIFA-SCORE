@@ -4,6 +4,7 @@ Django Settings (SQLite edition – no Redis / Celery / external services needed
 """
 import os
 from pathlib import Path
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -69,25 +70,49 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# ── Database – SQLite (zero-config) ───────────────────────
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# ── Database – persistent PostgreSQL when configured, SQLite for development ──
+DATABASE_URL = config('DATABASE_URL', default='')
+if DATABASE_URL:
+    import dj_database_url
 
-# ── Cache – file-based (no Redis needed) ──────────────────
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': BASE_DIR / '.cache',
-        'TIMEOUT': 300,
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        },
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=not DEBUG,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# ── Cache – shared Redis in production, file cache for local development ──
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': BASE_DIR / '.cache',
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+            },
+        }
+    }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400 * 30
@@ -192,14 +217,19 @@ INSTALLED_APPS = ['daphne'] + INSTALLED_APPS + ['channels']
 ASGI_APPLICATION = 'config.asgi.application'
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
+    'default': (
+        {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [REDIS_URL]},
+        }
+        if REDIS_URL
+        else {'BACKEND': 'channels.layers.InMemoryChannelLayer'}
+    ),
 }
 
 
-CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = REDIS_URL or 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = REDIS_URL or 'redis://localhost:6379/0'
 CELERY_BEAT_SCHEDULE = {
     'update-live-matches-every-30s': {
         'task': 'apps.matches.tasks.update_live_matches',
@@ -207,11 +237,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-from decouple import config
 API_FOOTBALL_KEY = config('API_FOOTBALL_KEY', default='')
 API_FOOTBALL_URL = config('API_FOOTBALL_URL', default='https://v3.football.api-sports.io')
 
-from decouple import config
 FOOTBALL_DATA_KEY = config('FOOTBALL_DATA_KEY', default='')
 
 
@@ -219,3 +247,17 @@ WC_API_TOKEN = config('WC_API_TOKEN', default='')
 WC_CACHE_LIVE    = 30   # live scores: 30 seconds
 WC_CACHE_GROUPS  = 120  # standings: 2 minutes  
 WC_CACHE_RESULTS = 60   # results: 1 minute
+FIVE_DOLLAR_API_KEY = os.getenv('FIVE_DOLLAR_API_KEY', '')
+FIVE_DOLLAR_API_KEY_2 = os.getenv('FIVE_DOLLAR_API_KEY_2', '')
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env', override=True)
+
+API_FOOTBALL_KEY = os.getenv('API_FOOTBALL_KEY', '')
+API_FOOTBALL_URL = os.getenv('API_FOOTBALL_URL', 'https://v3.football.api-sports.io')
+WC_API_TOKEN = os.getenv('WC_API_TOKEN', '')
+FIVE_DOLLAR_API_KEY = os.getenv('FIVE_DOLLAR_API_KEY', '')
+FIVE_DOLLAR_API_KEY_2 = os.getenv('FIVE_DOLLAR_API_KEY_2', '')

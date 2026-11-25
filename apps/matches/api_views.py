@@ -138,6 +138,7 @@ def match_notifications(request):
             'league': match.get('league_name', ''),
             'home_team': (match.get('home_team') or {}).get('name', ''),
             'away_team': (match.get('away_team') or {}).get('name', ''),
+            'finished': False,
         }
     completed = [
         match for match in today
@@ -150,12 +151,13 @@ def match_notifications(request):
             'league': (match.get('league') or {}).get('name', ''),
             'home_team': (match.get('teams', {}).get('home') or {}).get('name', ''),
             'away_team': (match.get('teams', {}).get('away') or {}).get('name', ''),
+            'finished': True,
         }
     candidates.pop(None, None)
 
     feed = []
     for fixture_id, match in candidates.items():
-        for event in get_match_events(fixture_id):
+        for event in get_match_events(fixture_id, finished=match['finished']):
             event_time = event.get('time', {})
             feed.append({
                 'fixture_id': fixture_id,

@@ -1,11 +1,13 @@
+import hashlib
+import json
 import requests
 from django.conf import settings
 from django.core.cache import cache
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 
 # ── api-sports.io ─────────────────────────────────────────────
 AP_HEADERS = {"x-apisports-key": settings.API_FOOTBALL_KEY}
-AP_BASE    = "https://v3.football.api-sports.io"
+AP_BASE    = settings.API_FOOTBALL_URL.rstrip("/")
 
 # ── World Cup 2026 API ────────────────────────────────────────
 WC_BASE    = "http://worldcup26.ir:3050"
@@ -21,10 +23,30 @@ TRACKED_LEAGUES = {
 }
 
 
+def _ap_cache_keys(endpoint, params):
+    serialized = json.dumps(params or {}, sort_keys=True, separators=(',', ':'))
+    fingerprint = hashlib.sha256(serialized.encode('utf-8')).hexdigest()
+    stale_key = f"ap_stale_{endpoint}_{fingerprint}"
+    cooldown_key = f"ap_error_cooldown_{endpoint}_{fingerprint}"
+    legacy_stale_key = f"ap_stale_{endpoint}_{params}"
+    return stale_key, cooldown_key, legacy_stale_key
+
+
 def _ap_get(endpoint, params=None):
     if not settings.API_FOOTBALL_KEY:
         return []
-    stale_key = f"ap_stale_{endpoint}_{str(params)}"
+
+    stale_key, cooldown_key, legacy_stale_key = _ap_cache_keys(endpoint, params)
+
+    def stale_response():
+        stale = cache.get(stale_key)
+        if stale is not None:
+            return stale
+        return cache.get(legacy_stale_key, [])
+
+    if cache.get(cooldown_key):
+        return stale_response()
+
     try:
         r = requests.get(
             f"{AP_BASE}/{endpoint}",
@@ -34,36 +56,48 @@ def _ap_get(endpoint, params=None):
         )
         r.raise_for_status()
         data = r.json()
-        if data.get("errors"):
-            print("API-Football error:", data["errors"])
-            return cache.get(stale_key, [])
+        errors = data.get("errors")
+        if errors:
+            print("API-Football error:", errors)
+            error_text = str(errors).lower()
+            cooldown = 3600 if "limit" in error_text or "quota" in error_text else 60
+            cache.set(cooldown_key, True, cooldown)
+            return stale_response()
+        cache.delete(cooldown_key)
         response = data.get("response", [])
         if response:
             cache.set(stale_key, response, 86400)  # 24-hour backup cache
         return response
     except Exception as e:
         print("API-Football request failed:", e)
-        return cache.get(stale_key, [])
+        cache.set(cooldown_key, True, 60)
+        return stale_response()
 
 
 def _wc_get(endpoint):
-    """Call WC API with JWT token. Retries once, falls back to stale cache."""
+    """Call the World Cup API briefly, then use stale data during outages."""
     token = settings.WC_API_TOKEN
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    stale_key = f"stale_{endpoint}"
+    cooldown_key = f"wc_error_cooldown_{endpoint}"
+    stale = cache.get(stale_key)
+    if cache.get(cooldown_key):
+        return stale if stale is not None else {}
 
-    for attempt in range(2):
-        try:
-            r = requests.get(f"{WC_BASE}/{endpoint}", headers=headers, timeout=20)
-            r.raise_for_status()
-            data = r.json()
-            cache.set(f'stale_{endpoint}', data, 60 * 60 * 24)
-            return data
-        except Exception:
-            if attempt == 0:
-                continue
-            stale = cache.get(f'stale_{endpoint}')
-            return stale if stale else {}
-    return {}
+    try:
+        response = requests.get(
+            f"{WC_BASE}/{endpoint}", headers=headers, timeout=3
+        )
+        response.raise_for_status()
+        data = response.json()
+    except (requests.RequestException, ValueError) as error:
+        print("World Cup API request failed:", error)
+        cache.set(cooldown_key, True, 60)
+        return stale if stale is not None else {}
+
+    cache.set(stale_key, data, 60 * 60 * 24)
+    cache.delete(cooldown_key)
+    return data
 
 
 # ── api-sports functions (with caching + normalization) ───────
@@ -115,31 +149,24 @@ def get_today_matches(league_id=None):
     Fetches today's fixtures across ALL tracked leagues with a short live-safe cache.
     If today has 0 matches (e.g., quiet Monday), automatically fetches tomorrow's fixtures!
     """
-    today_str = str(date.today())
-    cache_key = f"ap_today_matches_{today_str}_{league_id or 'all'}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    params = {"date": today_str}
-    if league_id:
-        params["league"] = league_id
-
-    raw = _ap_get("fixtures", params)
-    filtered = [m for m in raw if m["league"]["id"] in TRACKED_LEAGUES]
+    today_str = date.today().isoformat()
+    filtered = get_fixtures_by_date(today_str, league_id=league_id)
 
     # Fallback to tomorrow's fixtures if today has 0 tracked matches
     if not filtered and not league_id:
         tomorrow_str = str(date.today() + timedelta(days=1))
-        raw_tomorrow = _ap_get("fixtures", {"date": tomorrow_str})
-        filtered = [m for m in raw_tomorrow if m["league"]["id"] in TRACKED_LEAGUES]
+        filtered = get_fixtures_by_date(tomorrow_str)
 
-    filtered.sort(key=lambda m: (
-        TRACKED_LEAGUES[m["league"]["id"]]["priority"],
-        m["fixture"]["timestamp"],
-    ))
-
-    cache.set(cache_key, filtered, 60)
+    if not filtered and (
+        getattr(settings, "FIVE_DOLLAR_API_KEY", "")
+        or getattr(settings, "FIVE_DOLLAR_API_KEY_2", "")
+    ):
+        filtered = _fd5_upcoming_or_today(today_str)
+        if league_id:
+            filtered = [
+                match for match in filtered
+                if match.get("league", {}).get("id") == league_id
+            ]
     return filtered
 
 
@@ -158,13 +185,13 @@ def get_league_standings(league_id=39, season=2026):
     return standings
 
 
-def get_match_events(fixture_id):
+def get_match_events(fixture_id, finished=False):
     cache_key = f"ap_events_{fixture_id}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
     data = _ap_get("fixtures/events", {"fixture": fixture_id})
-    cache.set(cache_key, data, 60)
+    cache.set(cache_key, data, 86400 if finished and data else 60)
     return data
 
 
@@ -178,23 +205,23 @@ def get_match_lineups(fixture_id):
     return data
 
 
-def get_match_stats(fixture_id):
+def get_match_stats(fixture_id, finished=False):
     cache_key = f"ap_stats_{fixture_id}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
     data = _ap_get("fixtures/statistics", {"fixture": fixture_id})
-    cache.set(cache_key, data, 60)
+    cache.set(cache_key, data, 86400 if finished and data else 60)
     return data
 
 
-def get_match_player_stats(fixture_id):
+def get_match_player_stats(fixture_id, finished=False):
     cache_key = f"ap_player_stats_{fixture_id}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
     data = _ap_get("fixtures/players", {"fixture": fixture_id})
-    cache.set(cache_key, data, 60)
+    cache.set(cache_key, data, 86400 if finished and data else 60)
     return data
 
 
@@ -348,41 +375,6 @@ def get_top_scorers(league_id=39, season=2026):
     raw = _ap_get("players/topscorers", {"league": league_id, "season": season})
     cache.set(cache_key, raw, 43200)
     return raw
-def get_all_tracked_leagues():
-    """Returns metadata + official logos for all tracked leagues (0 API calls)."""
-    return [
-        {
-            "id": lid,
-            "name": info["name"],
-            "country": info["country"],
-            "logo": f"https://media.api-sports.io/football/leagues/{lid}.png",
-        }
-        for lid, info in TRACKED_LEAGUES.items()
-    ]
-
-
-def get_league_teams(league_id=39, season=2026):
-    """Fetches all teams in a league (cached 24 hours -> max 1 API call/day per league)."""
-    cache_key = f"ap_teams_{league_id}_{season}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    raw = _ap_get("teams", {"league": league_id, "season": season})
-    cache.set(cache_key, raw, 86400)
-    return raw
-
-
-def get_top_scorers(league_id=39, season=2026):
-    """Fetches top players/scorers in a league (cached 12 hours)."""
-    cache_key = f"ap_topscorers_{league_id}_{season}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    raw = _ap_get("players/topscorers", {"league": league_id, "season": season})
-    cache.set(cache_key, raw, 43200)
-    return raw
 def get_fixtures_by_date(date_str, league_id=None):
     """
     Fetches fixtures for a specific YYYY-MM-DD date across all tracked leagues.
@@ -391,12 +383,14 @@ def get_fixtures_by_date(date_str, league_id=None):
     cached = cache.get(cache_key)
     if cached is None:
         raw = _ap_get("fixtures", {"date": date_str})
+        if not raw and getattr(settings, "FIVE_DOLLAR_API_KEY", ""):
+            raw = _fd5_fixtures_for_date(date_str)
         cached = [m for m in raw if m["league"]["id"] in TRACKED_LEAGUES]
         cached.sort(key=lambda m: (
             TRACKED_LEAGUES[m["league"]["id"]]["priority"],
             m["fixture"]["timestamp"],
         ))
-        cache.set(cache_key, cached, 60)
+        cache.set(cache_key, cached, 180)
 
     if league_id:
         return [m for m in cached if m["league"]["id"] == league_id]
@@ -418,10 +412,180 @@ def get_fixture_full_details(fixture_id):
     item = raw[0]
     status_short = item.get("fixture", {}).get("status", {}).get("short", "NS")
     finished_statuses = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"}
-    item["events"] = get_match_events(fixture_id)
+    finished = status_short in finished_statuses
+    item["events"] = get_match_events(fixture_id, finished=finished)
     item["lineups"] = get_match_lineups(fixture_id)
-    item["statistics"] = get_match_stats(fixture_id)
-    item["players"] = get_match_player_stats(fixture_id)
-    ttl = 86400 if status_short in finished_statuses else 60
+    item["statistics"] = get_match_stats(fixture_id, finished=finished)
+    item["players"] = get_match_player_stats(fixture_id, finished=finished)
+    details_complete = all(
+        item[key] for key in ("events", "lineups", "statistics", "players")
+    )
+    ttl = 86400 if finished and details_complete else 3600 if finished else 60
     cache.set(cache_key, item, ttl)
     return item
+
+FIVE_DOLLAR_BASE = "https://api.5dollarfootballapi.com/v1"
+
+
+def _fd5_get(endpoint, params=None):
+    """Calls 5DollarFootballAPI with automatic fallback between two keys."""
+    keys = [
+        key
+        for key in (
+            getattr(settings, "FIVE_DOLLAR_API_KEY", ""),
+            getattr(settings, "FIVE_DOLLAR_API_KEY_2", ""),
+        )
+        if key
+    ]
+    if not keys:
+        return []
+
+    serialized_params = json.dumps(
+        params or {}, sort_keys=True, separators=(",", ":")
+    )
+    fingerprint = hashlib.sha256(
+        f"{endpoint}:{serialized_params}".encode("utf-8")
+    ).hexdigest()
+    stale_key = f"fd5_stale_{fingerprint}"
+    last_error = None
+    for key in keys:
+        try:
+            response = requests.get(
+                f"{FIVE_DOLLAR_BASE}/{endpoint.lstrip('/')}",
+                headers={"Authorization": f"Bearer {key}"},
+                params=params,
+                timeout=10,
+            )
+        except requests.RequestException as error:
+            last_error = error
+            continue
+
+        if response.status_code in (401, 403, 429):
+            last_error = requests.HTTPError(
+                f"5DollarFootballAPI returned HTTP {response.status_code}"
+            )
+            continue
+
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as error:
+            last_error = error
+            continue
+
+        if not isinstance(payload, dict):
+            last_error = ValueError("5DollarFootballAPI returned an invalid response")
+            continue
+
+        data = payload.get("data", [])
+        if data:
+            cache.set(stale_key, data, 86400)
+        return data
+
+    if last_error:
+        print(f"5DollarFootballAPI request failed for {endpoint}: {last_error}")
+    else:
+        print(f"5DollarFootballAPI rejected all configured keys for {endpoint}")
+    return cache.get(stale_key, [])
+
+
+def _normalize_fd5_fixture(item):
+    """Converts a 5DollarFootballAPI fixture object into the template/frontend match format."""
+    home = item.get("home_team") or item.get("home") or {}
+    away = item.get("away_team") or item.get("away") or {}
+    league = item.get("league") or {}
+    score = item.get("score") or {}
+    status_raw = str(item.get("status", "scheduled")).lower()
+
+    status_map = {
+        "live": "LIVE",
+        "in_play": "1H",
+        "ht": "HT",
+        "halftime": "HT",
+        "finished": "FT",
+        "ft": "FT",
+        "scheduled": "NS",
+    }
+
+    return {
+        "fixture": {
+            "id": item.get("id"),
+            "date": item.get("kickoff_at") or item.get("date") or "",
+            "timestamp": item.get("timestamp") or 0,
+            "status": {
+                "short": status_map.get(status_raw, "NS"),
+                "elapsed": item.get("minute") or item.get("elapsed"),
+            },
+        },
+        "league": {
+            "id": league.get("id", 0),
+            "name": league.get("name", "Top League"),
+            "logo": league.get("logo") or f"https://media.api-sports.io/football/leagues/{league.get('id', 39)}.png",
+        },
+        "teams": {
+            "home": {
+                "id": home.get("id"),
+                "name": home.get("name", "Home"),
+                "logo": home.get("logo") or "",
+            },
+            "away": {
+                "id": away.get("id"),
+                "name": away.get("name", "Away"),
+                "logo": away.get("logo") or "",
+            },
+        },
+        "goals": {
+            "home": score.get("home", item.get("home_score")),
+            "away": score.get("away", item.get("away_score")),
+        },
+        "events": item.get("events", []),
+        "statistics": item.get("stats") or item.get("statistics") or [],
+    }
+
+
+def _fd5_fixtures_for_date(date_str):
+    day_start = datetime.strptime(date_str, "%Y-%m-%d").replace(
+        tzinfo=dt_timezone.utc
+    )
+    start_ts = int(day_start.timestamp())
+    end_ts = start_ts + 86400
+    raw = _fd5_get(
+        "fixtures",
+        {"start_time": start_ts, "end_time": end_ts, "include": "events,stats"},
+    )
+    return [_normalize_fd5_fixture(match) for match in raw]
+
+
+def _fd5_upcoming_or_today(date_str):
+    """Return today's provider fixtures, or the next scheduled fixtures."""
+    cache_key = f"fd5_upcoming_or_today_{date_str}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    today_fixtures = _fd5_fixtures_for_date(date_str)
+    if today_fixtures:
+        cache.set(cache_key, today_fixtures, 900)
+        return today_fixtures
+
+    leagues = _fd5_get("leagues")
+    upcoming = []
+    for league in leagues[:5]:
+        if not isinstance(league, dict):
+            continue
+        league_id = league.get("id")
+        if not league_id:
+            continue
+        raw_fixtures = _fd5_get(
+            f"leagues/{league_id}/fixtures",
+            {"status": "scheduled", "per_page": 5},
+        )
+        upcoming.extend(
+            _normalize_fd5_fixture(match) for match in raw_fixtures
+        )
+
+    upcoming.sort(
+        key=lambda match: match.get("fixture", {}).get("timestamp") or 0
+    )
+    cache.set(cache_key, upcoming, 900 if upcoming else 120)
+    return upcoming
