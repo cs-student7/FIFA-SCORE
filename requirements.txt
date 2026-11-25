@@ -13,3 +13,4 @@ crispy-bootstrap5
 django-filter
 django-debug-toolbar
 djangorestframework-simplejwt
+Pillow
