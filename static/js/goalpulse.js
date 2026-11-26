@@ -1,4 +1,4 @@
-/* GoalPulse — Main JavaScript (polling edition, no WebSocket required) */
+/* LEAGUE PLUS — Main JavaScript (polling edition, no WebSocket required) */
 'use strict';
 
 /* ── Live Score Ticker via polling ── */

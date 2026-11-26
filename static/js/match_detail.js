@@ -1,4 +1,4 @@
-/* GoalPulse — Match Detail Page JS (polling edition) */
+/* LEAGUE PLUS — Match Detail Page JS (polling edition) */
 'use strict';
 
 class MatchDetailPage {

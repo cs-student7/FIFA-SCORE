@@ -1,4 +1,4 @@
-/* GoalPulse — Home Page JS */
+/* LEAGUE PLUS — Home Page JS */
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
