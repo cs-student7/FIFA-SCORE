@@ -110,6 +110,21 @@ class FixtureCenterDataTests(SimpleTestCase):
         self.assertEqual(_wc_get('get/games'), stale)
         get.assert_called_once()
 
+    @override_settings(API_TOKEN='api-token', WC_API_TOKEN='legacy-token')
+    @patch('apps.matches.football_api.requests.get')
+    def test_world_cup_request_uses_api_token(self, get):
+        response = Mock()
+        response.json.return_value = {'games': []}
+        get.return_value = response
+
+        self.assertEqual(_wc_get('get/api-token-test'), {'games': []})
+
+        get.assert_called_once_with(
+            'http://worldcup26.ir:3050/get/api-token-test',
+            headers={'Authorization': 'Bearer api-token'},
+            timeout=3,
+        )
+
     @override_settings(FIVE_DOLLAR_API_KEY='test-key')
     @patch('apps.matches.football_api._fd5_get')
     @patch('apps.matches.football_api._ap_get', return_value=[])

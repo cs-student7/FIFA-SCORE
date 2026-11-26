@@ -76,7 +76,7 @@ def _ap_get(endpoint, params=None):
 
 def _wc_get(endpoint):
     """Call the World Cup API briefly, then use stale data during outages."""
-    token = settings.WC_API_TOKEN
+    token = settings.API_TOKEN or settings.WC_API_TOKEN
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     stale_key = f"stale_{endpoint}"
     cooldown_key = f"wc_error_cooldown_{endpoint}"

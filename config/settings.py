@@ -243,7 +243,7 @@ CELERY_BEAT_SCHEDULE = {
 
 API_FOOTBALL_KEY = config('API_FOOTBALL_KEY', default='')
 API_FOOTBALL_URL = config('API_FOOTBALL_URL', default='https://v3.football.api-sports.io')
-
+API_TOKEN = config('API_TOKEN', default='')
 FOOTBALL_DATA_KEY = config('FOOTBALL_DATA_KEY', default='')
 
 

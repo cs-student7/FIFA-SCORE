@@ -13,6 +13,7 @@ file. Never commit API keys, database passwords, or Redis URLs.
 | --- | --- | --- |
 | `API_FOOTBALL_KEY` | For live football data | API-Football subscription key |
 | `API_FOOTBALL_URL` | No | API base URL; defaults to `https://v3.football.api-sports.io` |
+| `API_TOKEN` | No | Bearer token for the World Cup API (`WC_API_TOKEN` remains a legacy fallback) |
 | `FIVE_DOLLAR_API_KEY` | No | Primary 5DollarFootballAPI key for fixture fallback |
 | `FIVE_DOLLAR_API_KEY_2` | No | Secondary key, tried after authorization or rate-limit failures |
 | `DATABASE_URL` | Production | Persistent PostgreSQL database URL; SQLite is used when unset |
