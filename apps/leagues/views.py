@@ -2,11 +2,11 @@ import logging
 import requests
 from django.views.generic import DetailView, TemplateView
 from django.core.cache import cache
+from apps.core.services.football_data import get_standings
 from .models import Competition
 from apps.matches.football_api import (
     TRACKED_LEAGUES,
     get_all_tracked_leagues,
-    get_league_standings,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,8 +29,8 @@ class LeagueListView(TemplateView):
         ctx['active_league'] = active_league
         ctx['active_league_info'] = TRACKED_LEAGUES[active_league]
         try:
-            ctx['standings'] = get_league_standings(
-                league_id=active_league, season=2026
+            ctx['standings'] = get_standings(
+                code=TRACKED_LEAGUES[active_league]['code']
             )
             ctx['api_error'] = ''
         except (requests.RequestException, ValueError):

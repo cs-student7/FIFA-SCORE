@@ -1,11 +1,11 @@
 import logging
 import requests
 from django.views.generic import DetailView, TemplateView
+from apps.core.services.football_data import get_top_scorers as get_fd_top_scorers
 from .models import Player
 from apps.matches.football_api import (
     TRACKED_LEAGUES,
     get_all_tracked_leagues,
-    get_top_scorers,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ class PlayerListView(TemplateView):
 
         q = self.request.GET.get('q', '').strip().lower()
         try:
-            api_players = get_top_scorers(
-                league_id=active_league, season=2026
+            api_players = get_fd_top_scorers(
+                code=TRACKED_LEAGUES[active_league]['code'], limit=20
             )
             ctx['api_error'] = ''
         except (requests.RequestException, ValueError):
@@ -44,7 +44,7 @@ class PlayerListView(TemplateView):
             api_players = [
                 item for item in api_players
                 if q in item.get('player', {}).get('name', '').lower()
-                or q in item.get('statistics', [{}])[0].get('team', {}).get('name', '').lower()
+                or q in item.get('team', {}).get('name', '').lower()
             ]
 
         ctx['api_leagues'] = get_all_tracked_leagues()

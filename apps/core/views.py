@@ -2,13 +2,13 @@ import logging
 
 import requests
 from django.views.generic import TemplateView
-from django.utils import timezone
 from django.core.cache import cache
 from apps.leagues.models import Competition
+from apps.core.services.football_data import get_weekly_matches
 from apps.matches.football_api import (
     get_wc_live_matches, get_wc_upcoming,
     get_wc_results, get_wc_groups,
-    get_live_matches, get_today_matches, TRACKED_LEAGUES,
+    TRACKED_LEAGUES,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,21 +32,20 @@ class HomeView(TemplateView):
             ctx['wc_results'] = []
             ctx['wc_groups'] = []
 
-        # ── Multi-League Live & Today's Matches (API-Football) ─
+        # ── Weekly matches from football-data.org v4 ─────────
         try:
-            ctx['league_live']     = get_live_matches()
-            ctx['league_today']    = get_today_matches()
+            codes = [info['code'] for info in TRACKED_LEAGUES.values()]
+            matches = get_weekly_matches(competitions=codes)
+            ctx['league_live'] = [
+                match for match in matches
+                if match.get('status') in {
+                    'LIVE', 'IN_PLAY', 'PAUSED', 'EXTRA_TIME',
+                    'PENALTY_SHOOTOUT',
+                }
+            ]
+            ctx['league_today'] = matches
             ctx['tracked_leagues'] = TRACKED_LEAGUES
-            ctx['league_fixtures_label'] = (
-                "Today's Matches"
-                if any(
-                    match.get('fixture', {}).get('date', '').startswith(
-                        timezone.localdate().isoformat()
-                    )
-                    for match in ctx['league_today']
-                )
-                else "Upcoming Matches"
-            )
+            ctx['league_fixtures_label'] = "Matches This Week"
         except (requests.RequestException, ValueError):
             logger.exception("Could not load football provider data for the home page")
             ctx['league_live']     = []

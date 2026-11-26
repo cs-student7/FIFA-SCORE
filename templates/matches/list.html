@@ -46,12 +46,12 @@
   {% endif %}
 
   {% if api_matches %}
-    {% regroup api_matches by league.name as league_groups %}
+    {% regroup api_matches by competition.name as league_groups %}
     {% for group in league_groups %}
     <section class="section-block mb-4">
       <div class="section-header">
         <h2 class="section-title">
-          <img src="{{ group.list.0.league.logo }}" alt="" class="comp-logo-xs me-1"
+          <img src="{{ group.list.0.competition.emblem }}" alt="" class="comp-logo-xs me-1"
                onerror="this.src='{% static "images/default-league.svg" %}'">
           {{ group.grouper }}
         </h2>
@@ -59,28 +59,25 @@
       </div>
       <div class="p-2">
         {% for m in group.list %}
-        <a href="{% url 'fixture-center' m.fixture.id %}"
+        <a href="{% url 'fixture-center' m.id %}"
            class="card bg-dark border-secondary mb-2 p-3 fixture-click-card text-decoration-none text-light">
+          <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+            <span>{{ m.status }}</span>
+            <span>{{ m.utcDate|slice:"0:10" }} · {{ m.utcDate|slice:"11:16" }} UTC</span>
+          </div>
           <div class="match-center-row">
             <div class="d-flex align-items-center gap-2 match-team-home">
-              <img src="{{ m.teams.home.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
-              <strong class="text-truncate">{{ m.teams.home.name }}</strong>
+              <img src="{{ m.homeTeam.crest }}" width="24" height="24" alt="" class="flex-shrink-0">
+              <strong class="text-truncate">{{ m.homeTeam.name }}</strong>
             </div>
             <div class="match-center">
-              <span class="small text-muted d-block">{{ m.fixture.date|slice:"0:10" }}</span>
-              {% if m.fixture.status.short == 'NS' %}
-                <span class="badge bg-secondary">{{ m.fixture.date|slice:"11:16" }} UTC</span>
-              {% elif m.fixture.status.short in '1H,2H,HT,ET,P,LIVE,BT' %}
-                <span class="badge bg-danger mb-1">{{ m.fixture.status.short }} {{ m.fixture.status.elapsed|default:"" }}'</span><br>
-                <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
-              {% else %}
-                <span class="badge bg-dark border border-secondary text-muted mb-1">{{ m.fixture.status.short }}</span><br>
-                <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
-              {% endif %}
+              <span class="fs-5 fw-bold">
+                {{ m.score.fullTime.home|default_if_none:"-" }} – {{ m.score.fullTime.away|default_if_none:"-" }}
+              </span>
             </div>
             <div class="d-flex align-items-center justify-content-end gap-2 match-team-away">
-              <strong class="text-truncate">{{ m.teams.away.name }}</strong>
-              <img src="{{ m.teams.away.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
+              <strong class="text-truncate">{{ m.awayTeam.name }}</strong>
+              <img src="{{ m.awayTeam.crest }}" width="24" height="24" alt="" class="flex-shrink-0">
             </div>
           </div>
         </a>

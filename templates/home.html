@@ -30,32 +30,33 @@
 
     {% if league_today %}
       {% for m in league_today %}
-      <a href="{% url 'fixture-center' m.fixture.id %}"
+      <a href="{% url 'fixture-center' m.id %}"
          class="card bg-dark border-secondary mb-2 p-3 text-decoration-none text-light">
         <div class="d-flex justify-content-between align-items-center text-muted small mb-2">
           <span>
-            <img src="{{ m.league.logo }}" width="18" height="18" class="me-1" alt="">
-            {{ m.league.name }}
+            <img src="{{ m.competition.emblem }}" width="18" height="18" class="me-1" alt="">
+            {{ m.competition.name }}
           </span>
-          <span class="badge {% if m.fixture.status.short in '1H,2H,HT,ET,P,BT,LIVE' %}bg-danger{% else %}bg-secondary{% endif %}">
-            {{ m.fixture.status.short }}{% if m.fixture.status.elapsed %} {{ m.fixture.status.elapsed }}'{% endif %}
+          <span class="badge {% if m.status in 'LIVE,IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT' %}bg-danger{% else %}bg-secondary{% endif %}">
+            {{ m.status }}
           </span>
         </div>
         <div class="match-center-row">
           <div class="d-flex align-items-center gap-2 match-team-home">
-            <img src="{{ m.teams.home.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
-            <strong class="text-truncate">{{ m.teams.home.name }}</strong>
+            <img src="{{ m.homeTeam.crest }}" width="24" height="24" alt="" class="flex-shrink-0">
+            <strong class="text-truncate">{{ m.homeTeam.name }}</strong>
           </div>
           <div class="match-center">
-            {% if m.fixture.status.short == 'NS' %}
-              <span class="badge bg-secondary">{{ m.fixture.date|slice:"0:10" }} · {{ m.fixture.date|slice:"11:16" }} UTC</span>
-            {% else %}
-              <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
-            {% endif %}
+            <span class="fs-5 fw-bold">
+              {{ m.score.fullTime.home|default_if_none:"-" }} – {{ m.score.fullTime.away|default_if_none:"-" }}
+            </span>
+            <span class="badge bg-secondary d-block mt-1">
+              {{ m.utcDate|slice:"0:10" }} · {{ m.utcDate|slice:"11:16" }} UTC
+            </span>
           </div>
           <div class="d-flex align-items-center justify-content-end gap-2 match-team-away">
-            <strong class="text-truncate">{{ m.teams.away.name }}</strong>
-            <img src="{{ m.teams.away.logo }}" width="24" height="24" alt="" class="flex-shrink-0">
+            <strong class="text-truncate">{{ m.awayTeam.name }}</strong>
+            <img src="{{ m.awayTeam.crest }}" width="24" height="24" alt="" class="flex-shrink-0">
           </div>
         </div>
       </a>

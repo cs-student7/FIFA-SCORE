@@ -170,8 +170,14 @@ class FixtureCenterDataTests(SimpleTestCase):
             params=None,
             timeout=10,
         )
-        cache_get.assert_called_once_with('pl_matches_v4')
-        cache_set.assert_called_once_with('pl_matches_v4', matches, 120)
+        cache_set.assert_called_once()
+        cache_key = cache_set.call_args.args[0]
+        self.assertTrue(cache_key.startswith('fd_v4_'))
+        cache_get.assert_called_once_with(cache_key)
+        self.assertEqual(
+            cache_set.call_args.args[1:],
+            ({'matches': matches}, 120),
+        )
 
     @override_settings(API_FOOTBALL_KEY='')
     @patch('apps.matches.football_api.FootballDataClient.get_matches_by_date')
@@ -200,26 +206,20 @@ class FixtureCenterDataTests(SimpleTestCase):
             '2026-11-26', '2026-11-26', ['PL'], status=None
         )
 
-    @patch('apps.matches.views.get_fixtures_by_date')
+    @patch('apps.matches.views.get_fd_matches_by_date')
     def test_fixture_page_renders_matches_returned_by_provider(self, fixtures):
         fixtures.return_value = [{
-            'fixture': {
-                'id': 112233,
-                'date': '2026-11-26T19:00:00Z',
-                'timestamp': 1795719600,
-                'status': {'short': 'NS', 'elapsed': None},
-            },
-            'league': {
-                'id': 39,
+            'id': 112233,
+            'utcDate': '2026-11-26T19:00:00Z',
+            'status': 'SCHEDULED',
+            'competition': {
+                'code': 'PL',
                 'name': 'Premier League',
-                'logo': '',
-                'round': '',
+                'emblem': '',
             },
-            'teams': {
-                'home': {'id': 1, 'name': 'Home FC', 'logo': ''},
-                'away': {'id': 2, 'name': 'Away FC', 'logo': ''},
-            },
-            'goals': {'home': None, 'away': None},
+            'homeTeam': {'id': 1, 'name': 'Home FC', 'crest': ''},
+            'awayTeam': {'id': 2, 'name': 'Away FC', 'crest': ''},
+            'score': {'fullTime': {'home': None, 'away': None}},
         }]
 
         response = self.client.get('/matches/?date=2026-11-26&league=39')
@@ -229,31 +229,25 @@ class FixtureCenterDataTests(SimpleTestCase):
         self.assertContains(response, 'Away FC')
         self.assertContains(response, 'Premier League')
 
-    @patch('apps.matches.views.get_fixtures_between')
-    @patch('apps.matches.views.get_fixtures_by_date', return_value=[])
+    @patch('apps.matches.views.get_fd_matches_by_date')
     def test_empty_fixture_day_shows_upcoming_matches(
-        self, fixtures_for_date, upcoming_fixtures
+        self, fixtures_by_date
     ):
         start_day = date.today()
-        upcoming_fixtures.return_value = [{
-            'fixture': {
-                'id': 112234,
-                'date': (start_day + timedelta(days=2)).isoformat() + 'T19:00:00Z',
-                'timestamp': 1795719600,
-                'status': {'short': 'NS', 'elapsed': None},
-            },
-            'league': {
-                'id': 39,
+        upcoming_match = {
+            'id': 112234,
+            'utcDate': (start_day + timedelta(days=2)).isoformat() + 'T19:00:00Z',
+            'status': 'SCHEDULED',
+            'competition': {
+                'code': 'PL',
                 'name': 'Premier League',
-                'logo': '',
-                'round': '',
+                'emblem': '',
             },
-            'teams': {
-                'home': {'id': 1, 'name': 'Next Home FC', 'logo': ''},
-                'away': {'id': 2, 'name': 'Next Away FC', 'logo': ''},
-            },
-            'goals': {'home': None, 'away': None},
-        }]
+            'homeTeam': {'id': 1, 'name': 'Next Home FC', 'crest': ''},
+            'awayTeam': {'id': 2, 'name': 'Next Away FC', 'crest': ''},
+            'score': {'fullTime': {'home': None, 'away': None}},
+        }
+        fixtures_by_date.side_effect = [[], [upcoming_match]]
 
         response = self.client.get(
             f'/matches/?date={start_day.isoformat()}&league=39'
@@ -263,7 +257,78 @@ class FixtureCenterDataTests(SimpleTestCase):
         self.assertContains(response, 'No matches are scheduled')
         self.assertContains(response, 'Next Home FC')
         self.assertContains(response, 'Next Away FC')
-        upcoming_fixtures.assert_called_once()
+        self.assertEqual(fixtures_by_date.call_count, 2)
+
+    @patch('apps.core.views.Competition.objects.filter', return_value=[])
+    @patch('apps.core.views.get_wc_groups', return_value=[])
+    @patch('apps.core.views.get_wc_results', return_value=[])
+    @patch('apps.core.views.get_wc_upcoming', return_value=[])
+    @patch('apps.core.views.get_wc_live_matches', return_value=[])
+    @patch('apps.core.views.get_weekly_matches')
+    def test_home_page_renders_raw_v4_match_fields(
+        self, weekly_matches, _wc_live, _wc_upcoming, _wc_results, _wc_groups,
+        _competitions,
+    ):
+        weekly_matches.return_value = [{
+            'id': 112235,
+            'utcDate': '2026-11-26T19:00:00Z',
+            'status': 'SCHEDULED',
+            'competition': {
+                'name': 'Premier League',
+                'emblem': '',
+                'code': 'PL',
+            },
+            'homeTeam': {'name': 'Home FC', 'crest': ''},
+            'awayTeam': {'name': 'Away FC', 'crest': ''},
+            'score': {'fullTime': {'home': None, 'away': None}},
+        }]
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Matches This Week')
+        self.assertContains(response, 'Premier League')
+        self.assertContains(response, 'Home FC')
+        self.assertContains(response, 'Away FC')
+
+    @patch('apps.leagues.views.get_standings')
+    def test_standings_page_renders_v4_fields(self, standings):
+        standings.return_value = [{
+            'position': 1,
+            'team': {'name': 'Home FC', 'crest': ''},
+            'playedGames': 10,
+            'won': 8,
+            'draw': 1,
+            'lost': 1,
+            'goalsFor': 24,
+            'goalsAgainst': 8,
+            'goalDifference': 16,
+            'points': 25,
+            'form': 'W,W,D,W,W',
+        }]
+
+        response = self.client.get('/leagues/?league=39')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Home FC')
+        self.assertContains(response, '25')
+
+    @patch('apps.players.views.get_fd_top_scorers')
+    def test_scorers_page_renders_v4_fields(self, scorers):
+        scorers.return_value = [{
+            'player': {'name': 'Example Scorer', 'nationality': 'England'},
+            'team': {'name': 'Home FC', 'crest': ''},
+            'playedMatches': 10,
+            'goals': 8,
+            'assists': 2,
+        }]
+
+        response = self.client.get('/players/?league=39')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Example Scorer')
+        self.assertContains(response, 'Home FC')
+        self.assertContains(response, '8')
 
     @override_settings(API_FOOTBALL_KEY='')
     @patch('apps.matches.football_api.FootballDataClient.get_standings')

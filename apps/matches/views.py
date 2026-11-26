@@ -4,11 +4,12 @@ from datetime import date, timedelta
 from django.views.generic import DetailView, TemplateView
 from django.utils import timezone
 from .models import Match
+from apps.core.services.football_data import (
+    get_matches_by_date as get_fd_matches_by_date,
+)
 from .football_api import (
     TRACKED_LEAGUES,
     get_all_tracked_leagues,
-    get_fixtures_between,
-    get_fixtures_by_date,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,19 +27,30 @@ class MatchListView(TemplateView):
             league_id = int(self.request.GET.get('league', 0)) or None
         except ValueError:
             league_id = None
+        if league_id not in TRACKED_LEAGUES:
+            league_id = None
 
         try:
             requested_day = date.fromisoformat(selected_date)
-            api_matches = get_fixtures_by_date(
-                selected_date, league_id=league_id
+            competition_codes = (
+                [TRACKED_LEAGUES[league_id]['code']]
+                if league_id in TRACKED_LEAGUES
+                else [
+                    info['code'] for info in TRACKED_LEAGUES.values()
+                ]
             )
+            api_matches = get_fd_matches_by_date(
+                selected_date, selected_date, competitions=competition_codes
+            )
+            api_matches.sort(key=lambda match: match.get('utcDate', ''))
             fixtures_fallback = False
             if not api_matches and requested_day >= today:
-                api_matches = get_fixtures_between(
+                api_matches = get_fd_matches_by_date(
                     selected_date,
                     (requested_day + timedelta(days=14)).isoformat(),
-                    league_id=league_id,
+                    competitions=competition_codes,
                 )
+                api_matches.sort(key=lambda match: match.get('utcDate', ''))
                 fixtures_fallback = bool(api_matches)
             api_error = ''
         except (requests.RequestException, ValueError):
@@ -50,7 +62,9 @@ class MatchListView(TemplateView):
                 "football-data.org account access, then try again."
             )
 
-        live_statuses = {'1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'}
+        live_statuses = {
+            'LIVE', 'IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT',
+        }
 
         ctx['api_matches'] = api_matches
         ctx['api_error'] = api_error
@@ -62,8 +76,7 @@ class MatchListView(TemplateView):
         ctx['api_leagues'] = get_all_tracked_leagues()
         ctx['active_league'] = league_id or 0
         ctx['live_count'] = sum(
-            1 for m in api_matches
-            if m.get('fixture', {}).get('status', {}).get('short') in live_statuses
+            1 for m in api_matches if m.get('status') in live_statuses
         )
         return ctx
 

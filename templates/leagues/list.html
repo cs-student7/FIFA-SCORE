@@ -61,21 +61,21 @@
     <tbody>
       {% for row in standings %}
       <tr class="standing-row border-bottom border-secondary"
-          style="border-left: 4px solid {% if row.rank <= 4 %}#4285f4{% elif row.rank == 5 %}#fa7b17{% elif row.rank >= 18 %}#ea4335{% else %}transparent{% endif %};">
-        <td class="font-mono text-muted" style="padding-left:12px">{{ row.rank }}</td>
+          style="border-left: 4px solid {% if row.position <= 4 %}#4285f4{% elif row.position == 5 %}#fa7b17{% elif row.position >= 18 %}#ea4335{% else %}transparent{% endif %};">
+        <td class="font-mono text-muted" style="padding-left:12px">{{ row.position }}</td>
         <td>
           <div class="d-flex align-items-center gap-2 py-1">
-            <img src="{{ row.team.logo }}" width="22" height="22" alt="" loading="lazy">
+            <img src="{{ row.team.crest }}" width="22" height="22" alt="" loading="lazy">
             <span class="fw-600">{{ row.team.name }}</span>
           </div>
         </td>
-        <td class="text-center font-mono">{{ row.all.played }}</td>
-        <td class="text-center font-mono">{{ row.all.win }}</td>
-        <td class="text-center font-mono">{{ row.all.draw }}</td>
-        <td class="text-center font-mono">{{ row.all.lose }}</td>
-        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.all.goals.for }}</td>
-        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.all.goals.against }}</td>
-        <td class="text-center font-mono">{{ row.goalsDiff }}</td>
+        <td class="text-center font-mono">{{ row.playedGames }}</td>
+        <td class="text-center font-mono">{{ row.won }}</td>
+        <td class="text-center font-mono">{{ row.draw }}</td>
+        <td class="text-center font-mono">{{ row.lost }}</td>
+        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.goalsFor }}</td>
+        <td class="text-center font-mono text-muted d-none d-md-table-cell">{{ row.goalsAgainst }}</td>
+        <td class="text-center font-mono">{{ row.goalDifference }}</td>
         <td class="text-center font-mono fw-bold text-white">{{ row.points }}</td>
         <td class="text-center d-none d-sm-table-cell">
           <div class="d-inline-flex gap-1">
