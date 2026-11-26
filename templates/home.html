@@ -20,9 +20,13 @@
 <div class="container-fluid px-3 px-lg-4">
   <section class="section-block mb-4">
     <div class="section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h2 class="section-title"><i class="bi bi-trophy-fill text-warning me-2"></i>Tracked Leagues</h2>
+      <h2 class="section-title"><i class="bi bi-trophy-fill text-warning me-2"></i>{{ league_fixtures_label|default:"Tracked Leagues" }}</h2>
       <a href="{% url 'league-list' %}" class="btn btn-sm btn-outline-secondary">Standings for all leagues</a>
     </div>
+
+    {% if football_data_error %}
+    <div class="alert alert-warning" role="alert">{{ football_data_error }}</div>
+    {% endif %}
 
     {% if league_today %}
       {% for m in league_today %}
@@ -44,7 +48,7 @@
           </div>
           <div class="match-center">
             {% if m.fixture.status.short == 'NS' %}
-              <span class="badge bg-secondary">{{ m.fixture.date|slice:"11:16" }} UTC</span>
+              <span class="badge bg-secondary">{{ m.fixture.date|slice:"0:10" }} · {{ m.fixture.date|slice:"11:16" }} UTC</span>
             {% else %}
               <span class="fs-5 fw-bold">{{ m.goals.home|default:"0" }} – {{ m.goals.away|default:"0" }}</span>
             {% endif %}

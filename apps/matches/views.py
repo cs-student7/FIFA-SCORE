@@ -1,3 +1,5 @@
+import logging
+import requests
 from datetime import date, timedelta
 from django.views.generic import DetailView, TemplateView
 from django.utils import timezone
@@ -5,8 +7,11 @@ from .models import Match
 from .football_api import (
     TRACKED_LEAGUES,
     get_all_tracked_leagues,
+    get_fixtures_between,
     get_fixtures_by_date,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MatchListView(TemplateView):
@@ -22,10 +27,34 @@ class MatchListView(TemplateView):
         except ValueError:
             league_id = None
 
-        api_matches = get_fixtures_by_date(selected_date, league_id=league_id)
+        try:
+            requested_day = date.fromisoformat(selected_date)
+            api_matches = get_fixtures_by_date(
+                selected_date, league_id=league_id
+            )
+            fixtures_fallback = False
+            if not api_matches and requested_day >= today:
+                api_matches = get_fixtures_between(
+                    selected_date,
+                    (requested_day + timedelta(days=14)).isoformat(),
+                    league_id=league_id,
+                )
+                fixtures_fallback = bool(api_matches)
+            api_error = ''
+        except (requests.RequestException, ValueError):
+            logger.exception("Could not load fixtures for %s", selected_date)
+            api_matches = []
+            fixtures_fallback = False
+            api_error = (
+                "Fixtures are unavailable. Check your API_TOKEN and "
+                "football-data.org account access, then try again."
+            )
+
         live_statuses = {'1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'}
 
         ctx['api_matches'] = api_matches
+        ctx['api_error'] = api_error
+        ctx['fixtures_fallback'] = fixtures_fallback
         ctx['selected_date'] = selected_date
         ctx['yesterday_date'] = (today - timedelta(days=1)).isoformat()
         ctx['today_date'] = today.isoformat()

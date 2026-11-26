@@ -1,3 +1,6 @@
+import logging
+
+import requests
 from django.views.generic import TemplateView
 from django.utils import timezone
 from django.core.cache import cache
@@ -7,6 +10,8 @@ from apps.matches.football_api import (
     get_wc_results, get_wc_groups,
     get_live_matches, get_today_matches, TRACKED_LEAGUES,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class HomeView(TemplateView):
@@ -32,10 +37,25 @@ class HomeView(TemplateView):
             ctx['league_live']     = get_live_matches()
             ctx['league_today']    = get_today_matches()
             ctx['tracked_leagues'] = TRACKED_LEAGUES
-        except Exception:
+            ctx['league_fixtures_label'] = (
+                "Today's Matches"
+                if any(
+                    match.get('fixture', {}).get('date', '').startswith(
+                        timezone.localdate().isoformat()
+                    )
+                    for match in ctx['league_today']
+                )
+                else "Upcoming Matches"
+            )
+        except (requests.RequestException, ValueError):
+            logger.exception("Could not load football provider data for the home page")
             ctx['league_live']     = []
             ctx['league_today']    = []
             ctx['tracked_leagues'] = TRACKED_LEAGUES
+            ctx['football_data_error'] = (
+                "Match data is unavailable. Check your API_TOKEN and "
+                "football-data.org account access, then try again."
+            )
 
         # ── Featured competitions + standings (from DB) ────────
         featured = list(

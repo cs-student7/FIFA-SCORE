@@ -36,6 +36,15 @@
   </div>
   {% endif %}
 
+  {% if api_error %}
+  <div class="alert alert-warning" role="alert">{{ api_error }}</div>
+  {% endif %}
+  {% if fixtures_fallback %}
+  <div class="alert alert-info" role="status">
+    No matches are scheduled on {{ selected_date }}. Showing the next two weeks of fixtures.
+  </div>
+  {% endif %}
+
   {% if api_matches %}
     {% regroup api_matches by league.name as league_groups %}
     {% for group in league_groups %}
@@ -58,6 +67,7 @@
               <strong class="text-truncate">{{ m.teams.home.name }}</strong>
             </div>
             <div class="match-center">
+              <span class="small text-muted d-block">{{ m.fixture.date|slice:"0:10" }}</span>
               {% if m.fixture.status.short == 'NS' %}
                 <span class="badge bg-secondary">{{ m.fixture.date|slice:"11:16" }} UTC</span>
               {% elif m.fixture.status.short in '1H,2H,HT,ET,P,LIVE,BT' %}
@@ -81,7 +91,7 @@
   {% else %}
   <div class="section-block p-5 text-center text-muted">
     <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
-    <p class="mb-0">No tracked league matches found for {{ selected_date }}.</p>
+    <p class="mb-0">No tracked league matches found for {{ selected_date }}{% if selected_date >= today_date %} or the next two weeks{% endif %}.</p>
   </div>
   {% endif %}
 </div>

@@ -1,3 +1,5 @@
+import logging
+import requests
 from django.views.generic import DetailView, TemplateView
 from django.db.models import Q
 from .models import Team
@@ -6,6 +8,8 @@ from apps.matches.football_api import (
     get_all_tracked_leagues,
     get_league_teams,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TeamListView(TemplateView):
@@ -22,7 +26,18 @@ class TeamListView(TemplateView):
             active_league = 39
 
         q = self.request.GET.get('q', '').strip().lower()
-        api_teams = get_league_teams(league_id=active_league, season=2026)
+        try:
+            api_teams = get_league_teams(
+                league_id=active_league, season=2026
+            )
+            ctx['api_error'] = ''
+        except (requests.RequestException, ValueError):
+            logger.exception("Could not load teams for league %s", active_league)
+            api_teams = []
+            ctx['api_error'] = (
+                "Teams are unavailable. Check your API_TOKEN and "
+                "football-data.org account access, then try again."
+            )
 
         if q:
             api_teams = [

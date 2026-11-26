@@ -5,13 +5,13 @@ Django Settings (SQLite edition – no Redis / Celery / external services needed
 import os
 from pathlib import Path
 from decouple import config
-
+from decouple import AutoConfig
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-goalpulse-dev-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '.onrender.com,localhost,127.0.0.1').split(',')
-
+config = AutoConfig(search_path=BASE_DIR)
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -178,7 +178,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 # ── App Settings ──────────────────────────────────────────
-SITE_NAME = os.environ.get('SITE_NAME', 'GoalPulse')
+SITE_NAME = os.environ.get('SITE_NAME', 'GoalPlus')
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
 LIVE_UPDATE_INTERVAL = 30  # seconds (polling interval for live matches)
 LOGIN_URL = '/login/'
@@ -243,16 +243,13 @@ CELERY_BEAT_SCHEDULE = {
 
 API_FOOTBALL_KEY = config('API_FOOTBALL_KEY', default='')
 API_FOOTBALL_URL = config('API_FOOTBALL_URL', default='https://v3.football.api-sports.io')
-API_TOKEN = config('API_TOKEN', default='')
-FOOTBALL_DATA_KEY = config('FOOTBALL_DATA_KEY', default='')
+API_TOKEN = config('API_TOKEN', default='').strip()
 
 
 WC_API_TOKEN = config('WC_API_TOKEN', default='')
 WC_CACHE_LIVE    = 30   # live scores: 30 seconds
-WC_CACHE_GROUPS  = 120  # standings: 2 minutes  
+WC_CACHE_GROUPS  = 120  # standings: 2 minutes
 WC_CACHE_RESULTS = 60   # results: 1 minute
-FIVE_DOLLAR_API_KEY = os.getenv('FIVE_DOLLAR_API_KEY', '')
-FIVE_DOLLAR_API_KEY_2 = os.getenv('FIVE_DOLLAR_API_KEY_2', '')
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -262,9 +259,8 @@ load_dotenv(BASE_DIR / '.env', override=True)
 
 API_FOOTBALL_KEY = os.getenv('API_FOOTBALL_KEY', '')
 API_FOOTBALL_URL = os.getenv('API_FOOTBALL_URL', 'https://v3.football.api-sports.io')
+API_TOKEN = os.getenv('API_TOKEN', '').strip()
 WC_API_TOKEN = os.getenv('WC_API_TOKEN', '')
-FIVE_DOLLAR_API_KEY = os.getenv('FIVE_DOLLAR_API_KEY', '')
-FIVE_DOLLAR_API_KEY_2 = os.getenv('FIVE_DOLLAR_API_KEY_2', '')
 
 if not DEBUG:
     # Restrict allowed domains (never leave as ['*'] in production)
@@ -286,3 +282,4 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    

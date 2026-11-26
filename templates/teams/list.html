@@ -26,6 +26,10 @@
     </form>
   </div>
 
+  {% if api_error %}
+  <div class="alert alert-warning" role="alert">{{ api_error }}</div>
+  {% endif %}
+
   {% if api_teams %}
   <div class="section-block">
     <div class="standings-table-wrap">

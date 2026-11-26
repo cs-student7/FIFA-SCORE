@@ -1,3 +1,5 @@
+import logging
+import requests
 from django.views.generic import DetailView, TemplateView
 from django.core.cache import cache
 from .models import Competition
@@ -6,6 +8,8 @@ from apps.matches.football_api import (
     get_all_tracked_leagues,
     get_league_standings,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LeagueListView(TemplateView):
@@ -24,7 +28,20 @@ class LeagueListView(TemplateView):
         ctx['api_leagues'] = get_all_tracked_leagues()
         ctx['active_league'] = active_league
         ctx['active_league_info'] = TRACKED_LEAGUES[active_league]
-        ctx['standings'] = get_league_standings(league_id=active_league, season=2026)
+        try:
+            ctx['standings'] = get_league_standings(
+                league_id=active_league, season=2026
+            )
+            ctx['api_error'] = ''
+        except (requests.RequestException, ValueError):
+            logger.exception(
+                "Could not load standings for league %s", active_league
+            )
+            ctx['standings'] = []
+            ctx['api_error'] = (
+                "Standings are unavailable. Check your API_TOKEN and "
+                "football-data.org account access, then try again."
+            )
         ctx['competitions'] = Competition.objects.filter(is_active=True).select_related('country').order_by('tier', 'name')
         return ctx
 

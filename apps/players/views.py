@@ -1,3 +1,5 @@
+import logging
+import requests
 from django.views.generic import DetailView, TemplateView
 from .models import Player
 from apps.matches.football_api import (
@@ -5,6 +7,8 @@ from apps.matches.football_api import (
     get_all_tracked_leagues,
     get_top_scorers,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PlayerListView(TemplateView):
@@ -21,7 +25,20 @@ class PlayerListView(TemplateView):
             active_league = 39
 
         q = self.request.GET.get('q', '').strip().lower()
-        api_players = get_top_scorers(league_id=active_league, season=2026)
+        try:
+            api_players = get_top_scorers(
+                league_id=active_league, season=2026
+            )
+            ctx['api_error'] = ''
+        except (requests.RequestException, ValueError):
+            logger.exception(
+                "Could not load scorers for league %s", active_league
+            )
+            api_players = []
+            ctx['api_error'] = (
+                "Player statistics are unavailable. Check your API_TOKEN and "
+                "football-data.org account access, then try again."
+            )
 
         if q:
             api_players = [

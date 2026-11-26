@@ -14,21 +14,22 @@ TRACKED_LEAGUES = {
 
 
 def _fetch_apifootball(endpoint, params=None):
-    if not settings.API_FOOTBALL_KEY:
+    api_key = getattr(settings, "API_FOOTBALL_KEY", "")
+    if not api_key:
         return []
     try:
         res = requests.get(
             f"{settings.API_FOOTBALL_URL}/{endpoint}",
-            headers={"x-apisports-key": settings.API_FOOTBALL_KEY},
+            headers={"x-apisports-key": api_key},
             params=params,
             timeout=10,
         )
         res.raise_for_status()
         data = res.json()
         return [] if data.get("errors") else data.get("response", [])
-    except requests.RequestException as e:
-        print("API-Football error:", e)
-        return []
+    except requests.RequestException as error:
+        print("API-Football error:", error)
+    return []
 
 
 def get_live_matches_normalized():
